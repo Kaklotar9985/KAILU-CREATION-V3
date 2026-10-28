@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#143d32">
+  <title>KAILU CREATION</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Meta Pixel Code -->
+  <script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '1129729841614791');
+  fbq('track', 'PageView');
+  </script>
+  <!-- End Meta Pixel Code -->
+</head>
+<body>
+  <!-- Meta Pixel NoScript -->
+  <noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=1129729841614791&ev=PageView&noscript=1"
+  alt="" /></noscript>
+  <div class="announcement-bar">
+    <span class="announcement-mark">✦</span> YOUR STYLE, OUR CREATION
+    <span class="announcement-divider" aria-hidden="true"></span>
+    <span>PREMIUM PACKAGING · THOUGHTFUL DETAILS</span>
+    <a href="#products">EXPLORE THE EDIT <span aria-hidden="true">↗</span></a>
+  </div>
+  <header class="site-header">
+    <a class="brand" href="#home" aria-label="KAILU CREATION Home">
+      <img class="brand-logo" src="images/kailu-logo.JPG" alt="KAILU CREATION logo">
+      <span class="brand-tagline"><strong>KAILU CREATION</strong><small>Your Style, Our Creation</small></span>
+    </a>
+    <nav class="main-nav" aria-label="Main navigation">
+      <a class="nav-link active" href="#home">Home</a>
+      <a class="nav-link" href="#products">Shop Catalogs</a>
+      <a class="nav-link" href="#why-kailu">Why KAILU</a>
+    </nav>
+    <button id="cartShortcut" class="cart-shortcut" type="button" aria-label="Open cart">
+      <span class="cart-icon" aria-hidden="true">🛍</span> Cart <span id="cartCount" class="count">0</span>
+    </button>
+  </header>
+
+  <main id="home">
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow"><span class="eyebrow-line"></span> THE KAILU EXPERIENCE · ETHNIC WEAR</span>
+        <h1>Your Style,<br><em>Our Creation.</em></h1>
+        <p>खूबसूरत एथनिक कलेक्शन, सोच-समझकर तैयार की गई पैकेजिंग और हर ऑर्डर में खास एहसास। अपनी पसंद चुनें और ऑर्डर करें।</p>
+        <div class="hero-actions">
+          <a href="#products" class="primary-link">Discover the Collection <span>↗</span></a>
+          <span class="hero-price"><strong>₹349</strong><small>per catalog</small></span>
+        </div>
+        <div class="hero-promise"><span>✦</span> A little tradition. A lot of you.</div>
+        <div class="hero-assurances" aria-label="KAILU CREATION shopping highlights">
+          <span><b aria-hidden="true">✦</b> Curated ethnic wear</span>
+          <span><b aria-hidden="true">✓</b> Cash on Delivery</span>
+          <span><b aria-hidden="true">↗</b> Easy ordering</span>
+        </div>
+      </div>
+      <div class="hero-art" aria-label="Featured KAILU CREATION ethnic collection">
+        <div class="hero-photo photo-back">
+          <img src="images/catalog-2-1.JPG" alt="Mustard floral ethnic suit" loading="eager">
+          <span class="photo-caption">TIMELESS ELEGANCE</span>
+        </div>
+        <div class="hero-photo photo-main">
+          <img src="images/catalog-1-1.JPG" alt="Blue floral ethnic suit" loading="eager">
+          <span class="season-label">THE NEW EDIT <b>✦</b></span>
+        </div>
+        <div class="hero-photo photo-front">
+          <img src="images/catalog-3-1.JPG" alt="Sage green ethnic suit" loading="eager">
+          <span class="front-label">Made to feel beautiful</span>
+        </div>
+        <div class="floating-price"><span class="price-sparkle">✳</span><span><small>YOUR NEXT FAVOURITE</small><strong>From ₹349</strong></span></div>
+        <div class="brand-packaging-card" aria-label="KAILU CREATION branded gift bag">
+          <img src="images/kailu-bag.JPG" alt="KAILU CREATION luxury branded gift bag" loading="eager">
+          <span>THE KAILU EXPERIENCE</span>
+        </div>
+        <div class="hang-tag-card" aria-label="KAILU CREATION branded clothing tags">
+          <img src="images/kailu-tags.JPG" alt="KAILU CREATION premium clothing hang tags" loading="eager">
+        </div>
+        <div class="hero-orbit orbit-one"></div><div class="hero-orbit orbit-two"></div>
+      </div>
+    </section>
+
+    <section class="shop-section" id="products">
+      <div class="section-heading">
+        <div><span class="eyebrow">OUR ETHNIC COLLECTION</span><h2>Shop Catalogs</h2></div>
+        <p id="productSummary">3 beautiful catalogs • ₹349 each</p>
+      </div>
+      <div class="toolbar">
+        <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="Search products..." aria-label="Search products"></label>
+        <select id="categoryFilter" aria-label="Filter category">
+          <option value="all">All categories</option>
+        </select>
+        <select id="sortSelect" aria-label="Sort products">
+          <option value="featured">Featured</option>
+          <option value="low">Price: Low to high</option>
+          <option value="high">Price: High to low</option>
+          <option value="name">Name: A to Z</option>
+        </select>
+      </div>
+      <div id="productGrid" class="product-grid" aria-live="polite"></div>
+      <div id="emptyProducts" class="empty-state" hidden>
+        <span>⌕</span><h3>No products found</h3><p>Try another search or category.</p>
+      </div>
+    </section>
+
+    <section class="trust-strip" id="why-kailu">
+      <div><span>✓</span><p><strong>Easy WhatsApp Order</strong><small>Order in a few clicks</small></p></div>
+      <div><span>♡</span><p><strong>Direct Contact</strong><small>Chat with us to order</small></p></div>
+      <div><span>↗</span><p><strong>Price you will love</strong><small>Each catalog only ₹349</small></p></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div><strong>KAILU CREATION</strong><p>Your Style, Our Creation</p><p>WhatsApp: +91 92271 15179</p></div>
+    <small>KAILU CREATION • Catalog price ₹349 each. Delivery and availability are confirmed on WhatsApp.</small>
+  </footer>
+
+  <div id="overlay" class="overlay" hidden></div>
+  <aside id="cartDrawer" class="cart-drawer" aria-label="Shopping cart" aria-modal="true" role="dialog" hidden>
+    <div class="cart-head"><div><span class="eyebrow">YOUR SELECTION</span><h2>Your Cart <span id="drawerCount">(0)</span></h2></div><button id="closeCart" class="icon-button" aria-label="Close cart">×</button></div>
+    <div id="cartItems" class="cart-items"></div>
+    <div id="cartEmpty" class="cart-empty"><span>🛒</span><h3>Your cart is empty</h3><p>Add a few products to get started.</p><button id="continueShoppingEmpty" class="secondary-button" type="button">Continue shopping</button></div>
+    <div id="cartBottom" class="cart-bottom" hidden>
+      <div class="total-row"><span>Subtotal</span><strong id="cartTotal">₹0</strong></div>
+      <p class="cart-note">Delivery charges, availability and final total will be confirmed by the store.</p>
+      <div class="cod-note"><strong>✓ Cash on Delivery (COD)</strong><span>Payment is collected when your order is delivered.</span></div>
+      <button id="proceedCheckout" class="whatsapp-button proceed-checkout" type="button" hidden>Proceed to Order / Checkout</button>
+      <div id="checkoutFields" hidden>
+      <button id="continueToDetails" class="whatsapp-button continue-details" type="button">Continue to Place Order</button>
+      <div id="deliveryFields" hidden>
+      <div class="checkout-heading">Delivery details</div>
+      <label class="field-label" for="customerName">Full name <span class="required-mark">*</span></label>
+      <input id="customerName" class="customer-input" type="text" placeholder="Enter your full name" autocomplete="name" required>
+      <label class="field-label" for="mobileNumber">Mobile Number <span class="required-mark">*</span></label>
+      <input id="mobileNumber" class="customer-input" type="tel" inputmode="numeric" pattern="[6-9][0-9]{9}" minlength="10" maxlength="10" placeholder="Enter 10-digit mobile number" autocomplete="tel-national" required>
+      <label class="field-label" for="houseBuilding">House No. / Building Name <span class="required-mark">*</span></label>
+      <input id="houseBuilding" class="customer-input" type="text" placeholder="House number or building name" autocomplete="address-line1" required>
+      <label class="field-label" for="landmark">Landmark</label>
+      <input id="landmark" class="customer-input" type="text" placeholder="Nearby landmark (optional)" autocomplete="off">
+      <label class="field-label" for="roadArea">Road Name / Area / Colony <span class="required-mark">*</span></label>
+      <input id="roadArea" class="customer-input" type="text" placeholder="Road, area or colony" autocomplete="address-line2" required>
+      <label class="field-label" for="pincode">Pincode <span class="required-mark">*</span></label>
+      <input id="pincode" class="customer-input" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit PIN code" autocomplete="postal-code" required>
+      <label class="field-label" for="city">City <span class="required-mark">*</span></label>
+      <input id="city" class="customer-input" type="text" placeholder="Enter city" autocomplete="address-level2" required>
+      <label class="field-label" for="state">State <span class="required-mark">*</span></label>
+      <input id="state" class="customer-input" type="text" placeholder="Enter state" autocomplete="address-level1" required>
+      <button id="whatsappOrder" class="whatsapp-button"><span>◉</span> Place Order </button>
+      <small class="privacy-note">Your order details will be submitted to the configured order system.</small>
+      </div>
+      </div>
+    </div>
+  </aside>
+  <div id="orderSuccessModal" class="success-modal" hidden role="dialog" aria-modal="true" aria-labelledby="successTitle">
+    <div class="success-card">
+      <div class="success-check" aria-hidden="true">✓</div>
+      <h2 id="successTitle">Order Request Submitted!</h2>
+      <p>Thank you for shopping with <strong>KAILU CREATION</strong>.</p>
+      <p class="success-subtitle">Your order details have been sent for processing. We will contact you to confirm your order.</p>
+      <button id="continueShoppingSuccess" class="success-continue" type="button">Continue Shopping</button>
+    </div>
+  </div>
+  <div id="photoLightbox" class="photo-lightbox" hidden role="dialog" aria-modal="true" aria-label="Full screen catalog photo">
+    <button id="closePhotoLightbox" class="photo-lightbox-close" type="button" aria-label="Close full screen photo">×</button>
+    <button id="photoLightboxPrev" class="photo-lightbox-nav photo-lightbox-prev" type="button" aria-label="Previous photo">‹</button>
+    <img id="photoLightboxImage" src="" alt="Catalog full screen photo">
+    <button id="photoLightboxNext" class="photo-lightbox-nav photo-lightbox-next" type="button" aria-label="Next photo">›</button>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="script.js"></script>
+</body>
+</html>
