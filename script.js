@@ -85,41 +85,14 @@ function validatePincode(options = {}) {
 }
 
 const products = [
-  {id:1, name:"Navy Blue Floral Printed Anarkali Kurta Pant Dupatta Set", category:"3-Piece Kurti Set", price:349, mrp:1499, rating:4.2, reviews:5030, image:"images/Product_Photos/NavyBlue_Gown-01.webp", gallery:["images/Product_Photos/NavyBlue_Gown-02.webp", "images/Product_Photos/NavyBlue_Gown-03.webp", "images/Product_Photos/NavyBlue_Gown-04.webp"], video:"videos/Product_Videos/NavyBlue_Gown.mp4", tag:"SALE", description:"Fabric:- Rayon", color:"#e9dfd0"},
-  {id:2, name:"Mustard Yellow Floral Printed Kurta Pant Dupatta Set", category:"3-Piece Kurti Set", price:349, mrp:1499, rating:4.4, reviews:6531, image:"images/Product_Photos/Mustard_Yellow-01.webp", gallery:["images/Product_Photos/Mustard_Yellow-02.webp", "images/Product_Photos/Mustard_Yellow-03.webp", "images/Product_Photos/Mustard_Yellow-04.webp"], video:"videos/Product_Videos/Mustard_Yellow.mp4", tag:"SALE", description:"Fabric:- Cotton Blend", color:"#f0e4c9"},
-  {id:3, name:"Cream Ethnic Printed Kurta with Bottomwear and Dupatta", category:"3-Piece Kurti Set", price:349, mrp:1499, rating:4.6, reviews:7609, image:"images/Product_Photos/Cream_Ethnic-01.webp", gallery:["images/Product_Photos/Cream_Ethnic-02.webp", "images/Product_Photos/Cream_Ethnic-03.webp", "images/Product_Photos/Cream_Ethnic-04.webp"], video:"videos/Product_Videos/Cream_Ethnic.mp4", tag:"SALE", description:"Fabric:- Cotton Blend", color:"#e4e5d8"},
-  {id:4, name:"Black Kurti With Bottomwear", category:"Corset", price:349, mrp:1499, rating:48, reviews:5574, image:"images/Product_Photos/Black_Kurti_Paint-01.webp", gallery:["images/Product_Photos/Black_Kurti_Paint-02.webp", "images/Product_Photos/Black_Kurti_Paint-03.webp", "images/Product_Photos/Black_Kurti_Paint-04.webp"], video:"videos/Product_Videos/Black_Kurti_Paint.mp4", tag:"SALE", description:"Fabric:- Rayon", color:"#e4e5d8"},
-  {id:5, name:"Women Maroon Kurti Sharara Ethnic Wear Set", category:"Corset", price:349, mrp:1999, rating:48, reviews:5574, image:"images/Product_Photos/Maroon_Kurti_With_Sharara-01.webp", gallery:["images/Product_Photos/Maroon_Kurti_With_Sharara-02.webp", "images/Product_Photos/Maroon_Kurti_With_Sharara-03.webp", "images/Product_Photos/Maroon_Kurti_With_Sharara-04.webp"], video:"videos/Product_Videos/Maroon_Kurti_With_Sharara.mp4", tag:"SALE", description:"Fabric:- Rayon", color:"#e4e5d8"},
-  {id:6, name:"Women Black Kurti Sharara Ethnic Wear Set", category:"Corset", price:349, mrp:1999, rating:48, reviews:5574, image:"images/Product_Photos/Black_Kurti_With_Sharara-01.webp", gallery:["images/Product_Photos/Black_Kurti_With_Sharara-02.webp", "images/Product_Photos/Black_Kurti_With_Sharara-03.webp", "images/Product_Photos/Black_Kurti_With_Sharara-04.webp"], video:"videos/Product_Videos/Black_Kurti_With_Sharara.mp4", tag:"SALE", description:"Fabric:- Rayon", color:"#e4e5d8"},
-  {id:7, name:"Women Black Elegant Embroidered Kurti With Pant Set", category:"Corset", price:550, mrp:2999, rating:4.5, reviews:1985, image:"images/Product_Photos/Batak_black-01.webp", gallery:["images/Product_Photos/Batak_black-02.webp", "images/Product_Photos/Batak_black-03.webp", "images/Product_Photos/Batak_black-04.webp"], video:"videos/Product_Videos/Batak_black.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:8, name:"Women Navy Blue Designer Embroidered Kurti Pant Set", category:"Corset", price:550, mrp:2999, rating:4.4, reviews:1887, image:"images/Product_Photos/Batak_blu-01.webp", gallery:["images/Product_Photos/Batak_blu-02.webp", "images/Product_Photos/Batak_blu-03.webp", "images/Product_Photos/Batak_blu-04.webp"], video:"videos/Product_Videos/Batak_blu.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:9, name:"Women Bottle Green Designer Embroidered Kurti Pant Set", category:"Corset", price:550, mrp:2999, rating:4.3, reviews:1635, image:"images/Product_Photos/Batak_green-01.webp", gallery:["images/Product_Photos/Batak_green-02.webp", "images/Product_Photos/Batak_green-03.webp", "images/Product_Photos/Batak_green-04.webp"], video:"videos/Product_Videos/Batak_green.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:10, name:"Women Wine Maroon Designer Embroidered Kurti Pant Set", category:"Corset", price:550, mrp:2999, rating:4.6, reviews:1952, image:"images/Product_Photos/Batak_maroon-01.webp", gallery:["images/Product_Photos/Batak_maroon-02.webp", "images/Product_Photos/Batak_maroon-03.webp", "images/Product_Photos/Batak_maroon-04.webp"], video:"videos/Product_Videos/Batak_maroon.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:11, name:"Black White Printed Kurti With Bottomwear Set", category:"Corset", price:550, mrp:2999, rating:4.1, reviews:2542, image:"images/Product_Photos/dhingli_black-01.webp", gallery:["images/Product_Photos/dhingli_black-02.webp", "images/Product_Photos/dhingli_black-03.webp", "images/Product_Photos/dhingli_black-04.webp"], video:"videos/Product_Videos/dhingli_black.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:12, name:"Green White Printed Kurti With Bottomwear Set", category:"Corset", price:550, mrp:2999, rating:4.2, reviews:2008, image:"images/Product_Photos/dhingli_green-01.webp", gallery:["images/Product_Photos/dhingli_green-02.webp", "images/Product_Photos/dhingli_green-03.webp", "images/Product_Photos/dhingli_green-04.webp"], video:"videos/Product_Videos/dhingli_green.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:13, name:"Wine Purple White Printed Kurti With Bottomwear Set", category:"Corset", price:550, mrp:2999, rating:4.7, reviews:2287, image:"images/Product_Photos/dhingli_maroon-01.webp", gallery:["images/Product_Photos/dhingli_maroon-02.webp", "images/Product_Photos/dhingli_maroon-03.webp", "images/Product_Photos/dhingli_maroon-04.webp"], video:"videos/Product_Videos/dhingli_maroon.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:14, name:"Orange White Printed Kurti With Bottomwear Set", category:"Corset", price:550, mrp:2999, rating:4, reviews:2548, image:"images/Product_Photos/dhingli_orange-01.webp", gallery:["images/Product_Photos/dhingli_orange-02.webp", "images/Product_Photos/dhingli_orange-03.webp", "images/Product_Photos/dhingli_orange-04.webp"], video:"videos/Product_Videos/dhingli_orange.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:15, name:"Grey Printed Top With White Farshi Salwar Set", category:"Corset", price:550, mrp:2999, rating:4.3, reviews:2548, image:"images/Product_Photos/farsi_grey-01.webp", gallery:["images/Product_Photos/farsi_grey-02.webp", "images/Product_Photos/farsi_grey-03.webp", "images/Product_Photos/farsi_grey-04.webp"], video:"videos/Product_Videos/farsi_grey.mp4", tag:"NEW", description:"Fabric:- khadi cotton", color:"#e4e5d8"},
-  {id:16, name:"Pink White Striped Top With Farshi Salwar Set", category:"Corset", price:550, mrp:2999, rating:4, reviews:5523, image:"images/Product_Photos/farsi_pink-01.webp", gallery:["images/Product_Photos/farsi_pink-02.webp", "images/Product_Photos/farsi_pink-03.webp", "images/Product_Photos/farsi_pink-04.webp"], video:"videos/Product_Videos/farsi_pink.mp4", tag:"NEW", description:"Fabric:- khadi cotton", color:"#e4e5d8"},
-  {id:17, name:"Sky Blue Striped Top With White Farshi Salwar Set", category:"Corset", price:550, mrp:2999, rating:4, reviews:5364, image:"images/Product_Photos/farsi_sky-01.webp", gallery:["images/Product_Photos/farsi_sky-02.webp", "images/Product_Photos/farsi_sky-03.webp", "images/Product_Photos/farsi_sky-04.webp"], video:"videos/Product_Videos/farsi_sky.mp4", tag:"NEW", description:"Fabric:- khadi cotton", color:"#e4e5d8"},
-  {id:18, name:"Dark Blue Designer Embroidered Kurti Pant Set", category:"Corset", price:550, mrp:2999, rating:4.7, reviews:2221, image:"images/Product_Photos/mausam_bul-01.webp", gallery:["images/Product_Photos/mausam_bul-02.webp", "images/Product_Photos/mausam_bul-03.webp", "images/Product_Photos/mausam_bul-04.webp"], video:"videos/Product_Videos/mausam_bul.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:19, name:"Wine Maroon Designer Embroidered Kurti Pant Set", category:"Corset", price:550, mrp:2999, rating:4.2, reviews:2221, image:"images/Product_Photos/mausam_maroon-01.webp", gallery:["images/Product_Photos/mausam_maroon-02.webp", "images/Product_Photos/mausam_maroon-03.webp", "images/Product_Photos/mausam_maroon-04.webp"], video:"videos/Product_Videos/mausam_maroon.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:20, name:"Women Off White Designer Embroidered Kurti Pant Set", category:"Corset", price:550, mrp:2999, rating:4, reviews:652, image:"images/Product_Photos/mausam_white-01.webp", gallery:["images/Product_Photos/mausam_white-02.webp", "images/Product_Photos/mausam_white-03.webp", "images/Product_Photos/mausam_white-04.webp"], video:"videos/Product_Videos/mausam_white.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:21, name:"Brown Button Down Shirt With Printed Palazzo Pant Set", category:"Corset", price:600, mrp:2999, rating:3.9, reviews:823, image:"images/Product_Photos/rangila_brown-01.webp", gallery:["images/Product_Photos/rangila_brown-02.webp", "images/Product_Photos/rangila_brown-03.webp", "images/Product_Photos/rangila_brown-04.webp"], video:"videos/Product_Videos/rangila_brown.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:22, name:"Navy Blue Button Down Shirt With Printed Palazzo Set", category:"Corset", price:600, mrp:2999, rating:4, reviews:523, image:"images/Product_Photos/rangila_bul-01.webp", gallery:["images/Product_Photos/rangila_bul-02.webp", "images/Product_Photos/rangila_bul-03.webp", "images/Product_Photos/rangila_bul-04.webp"], video:"videos/Product_Videos/rangila_bul.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:23, name:"Pink Button Down Shirt With Printed Palazzo Set", category:"Corset", price:600, mrp:2999, rating:4.2, reviews:564, image:"images/Product_Photos/rangila_pink-01.webp", gallery:["images/Product_Photos/rangila_pink-02.webp", "images/Product_Photos/rangila_pink-03.webp", "images/Product_Photos/rangila_pink-04.webp"], video:"videos/Product_Videos/rangila_pink.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:24, name:"Red Button Down Shirt With Printed Palazzo Set", category:"Corset", price:600, mrp:2999, rating:4, reviews:985, image:"images/Product_Photos/rangila_red-01.webp", gallery:["images/Product_Photos/rangila_red-02.webp", "images/Product_Photos/rangila_red-03.webp", "images/Product_Photos/rangila_red-04.webp"], video:"videos/Product_Videos/rangila_red.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:25, name:"Mustard Yellow Button Down Shirt With Printed Palazzo Set", category:"Corset", price:600, mrp:2999, rating:4.3, reviews:899, image:"images/Product_Photos/rangila_Yellow-01.webp", gallery:["images/Product_Photos/rangila_Yellow-02.webp", "images/Product_Photos/rangila_Yellow-03.webp", "images/Product_Photos/rangila_Yellow-04.webp"], video:"videos/Product_Videos/rangila_Yellow.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:26, name:"Black White Printed Top With Cream Pants Set", category:"Corset", price:550, mrp:2999, rating:4.4, reviews:1123, image:"images/Product_Photos/short khadi_black-01.webp", gallery:["images/Product_Photos/short khadi_black-02.webp", "images/Product_Photos/short khadi_black-03.webp", "images/Product_Photos/short khadi_black-04.webp"], video:"videos/Product_Videos/short khadi_black.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:27, name:"Olive Green White Printed Top With Cream Pants Set", category:"Corset", price:550, mrp:2999, rating:4.2, reviews:895, image:"images/Product_Photos/short khadi_green-01.webp", gallery:["images/Product_Photos/short khadi_green-02.webp", "images/Product_Photos/short khadi_green-03.webp", "images/Product_Photos/short khadi_green-04.webp"], video:"videos/Product_Videos/short khadi_green.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:28, name:"Wine Purple Printed Top With Cream Pants Set", category:"Corset", price:550, mrp:2999, rating:4.4, reviews:754, image:"images/Product_Photos/short khadi_maroon-01.webp", gallery:["images/Product_Photos/short khadi_maroon-02.webp", "images/Product_Photos/short khadi_maroon-03.webp", "images/Product_Photos/short khadi_maroon-04.webp"], video:"videos/Product_Videos/short khadi_maroon.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:29, name:"Orange White Printed Top With Cream Pants Set", category:"Corset", price:550, mrp:2999, rating:3.9, reviews:852, image:"images/Product_Photos/short khadi_orange-01.webp", gallery:["images/Product_Photos/short khadi_orange-02.webp", "images/Product_Photos/short khadi_orange-03.webp", "images/Product_Photos/short khadi_orange-04.webp"], video:"videos/Product_Videos/short khadi_orange.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:30, name:"Black Multicolor Embroidered Top With Pant Set", category:"Corset", price:550, mrp:2999, rating:4.2, reviews:863, image:"images/Product_Photos/sunflower_cordset_black-01.webp", gallery:["images/Product_Photos/sunflower_cordset_black-02.webp", "images/Product_Photos/sunflower_cordset_black-03.webp", "images/Product_Photos/sunflower_cordset_black-04.webp"], video:"videos/Product_Videos/sunflower_cordset_black.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:31, name:"Navy Blue Traditional Embroidery Casual Wear Co Ord Set", category:"Corset", price:550, mrp:2999, rating:4, reviews:358, image:"images/Product_Photos/sunflower_cordset_bul-01.webp", gallery:["images/Product_Photos/sunflower_cordset_bul-02.webp", "images/Product_Photos/sunflower_cordset_bul-03.webp", "images/Product_Photos/sunflower_cordset_bul-04.webp"], video:"videos/Product_Videos/sunflower_cordset_bul.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:32, name:"Purple Elegant 3/4 Sleeve Kurta Palazzo Set", category:"Corset", price:550, mrp:2999, rating:3.8, reviews:255, image:"images/Product_Photos/sunflower_cordset_Lavendar-01.webp", gallery:["images/Product_Photos/sunflower_cordset_Lavendar-02.webp", "images/Product_Photos/sunflower_cordset_Lavendar-03.webp", "images/Product_Photos/sunflower_cordset_Lavendar-04.webp"], video:"videos/Product_Videos/sunflower_cordset_Lavendar.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:33, name:"White Designer Embroidered Top Palazzo Set", category:"Corset", price:550, mrp:2999, rating:4.8, reviews:653, image:"images/Product_Photos/sunflower_cordset_white-01.webp", gallery:["images/Product_Photos/sunflower_cordset_white-02.webp", "images/Product_Photos/sunflower_cordset_white-03.webp", "images/Product_Photos/sunflower_cordset_white-04.webp"], video:"videos/Product_Videos/sunflower_cordset_white.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"},
-  {id:34, name:"Mustard Yellow Designer Embroidered Kurti Pant Set", category:"Corset", price:550, mrp:2999, rating:4.2, reviews:235, image:"images/Product_Photos/sunflower_cordset_yellow-01.webp", gallery:["images/Product_Photos/sunflower_cordset_yellow-02.webp", "images/Product_Photos/sunflower_cordset_yellow-03.webp", "images/Product_Photos/sunflower_cordset_yellow-04.webp"], video:"videos/Product_Videos/sunflower_cordset_yellow.mp4", tag:"NEW", description:"Fabric:- cotton blend", color:"#e4e5d8"}
+  {id:1, name:"Navy Blue Floral Printed Anarkali Kurta Pant Dupatta Set", category:"3-Piece Kurti Set", price:349, mrp:1499, rating:4.2, reviews:5030, image:"images/Product_Photos/NavyBlue_Gown-1.webp", gallery:["images/Product_Photos/NavyBlue_Gown-2.webp", "images/Product_Photos/NavyBlue_Gown-3.webp", "images/Product_Photos/NavyBlue_Gown-4.webp"], video:"videos/Product_Videos/NavyBlue_Gown.mp4", tag:"SALE", description:"3-piece ethnic suit with matching printed dupatta and traditional motifs.", fabric:"Rayon", displayColor:"Navy Blue", sku:"NavyBlue_Gown", stock:99, color:"#e9dfd0"},
+  {id:2, name:"Mustard Yellow Floral Printed Kurta Pant Dupatta Set", category:"3-Piece Kurti Set", price:349, mrp:1499, rating:4.4, reviews:6531, image:"images/Product_Photos/Mustard_Yellow-1.webp", gallery:["images/Product_Photos/Mustard_Yellow-2.webp", "images/Product_Photos/Mustard_Yellow-3.webp", "images/Product_Photos/Mustard_Yellow-4.webp"], video:"", tag:"SALE", description:"Floral printed kurta, matching pant and coordinating dupatta.", fabric:"Cotton Blend", displayColor:"Mustard Yellow", sku:"Mustard_Yellow", stock:99, color:"#f0e4c9"},
+  {id:3, name:"Cream Ethnic Printed Kurta with Bottomwear and Dupatta", category:"3-Piece Kurti Set", price:349, mrp:1499, rating:4.6, reviews:7609, image:"images/Product_Photos/Cream_Ethnic-1.webp", gallery:["images/Product_Photos/Cream_Ethnic-2.webp", "images/Product_Photos/Cream_Ethnic-3.webp", "images/Product_Photos/Cream_Ethnic-4.webp"], video:"videos/Product_Videos/Cream_Ethnic.mp4", tag:"SALE", description:"Printed ethnic kurta set with matching bottomwear and a patterned dupatta.", fabric:"Cotton Blend", displayColor:"Cream", sku:"Cream_Ethnic", stock:99, color:"#e4e5d8"},
+  {id:4, name:"Black Kurti With Bottomwear", category:"Corset", price:349, mrp:1499, rating:4.8, reviews:5574, image:"images/Product_Photos/Black_Kurti_Paint-1.webp", gallery:["images/Product_Photos/Black_Kurti_Paint-2.webp", "images/Product_Photos/Black_Kurti_Paint-3.webp", "images/Product_Photos/Black_Kurti_Paint-4.webp"], video:"videos/Product_Videos/Black_Kurti_Paint.mp4", tag:"SALE", description:"Black kurti with white embroidery and matching bottomwear.", fabric:"Rayon", displayColor:"Black", sku:"Black_Kurti_Paint", stock:99, color:"#e4e5d8"},
+  {id:5, name:"Women Maroon Kurti Sharara Ethnic Wear Set", category:"Corset", price:349, mrp:1999, rating:4.8, reviews:5574, image:"images/Product_Photos/Maroon_Kurti_With_Sharara-1.webp", gallery:["images/Product_Photos/Maroon_Kurti_With_Sharara-2.webp", "images/Product_Photos/Maroon_Kurti_With_Sharara-3.webp", "images/Product_Photos/Maroon_Kurti_With_Sharara-4.webp"], video:"", tag:"SALE", description:"Maroon ethnic kurti with matching sharara bottomwear.", fabric:"Rayon", displayColor:"Maroon", sku:"Maroon_Kurti_With_Sharara", stock:99, color:"#e4e5d8"},
+  {id:6, name:"Women Black Kurti Sharara Ethnic Wear Set", category:"Corset", price:349, mrp:1999, rating:4.8, reviews:5574, image:"images/Product_Photos/Black_Kurti_With_Sharara-1.webp", gallery:["images/Product_Photos/Black_Kurti_With_Sharara-2.webp", "images/Product_Photos/Black_Kurti_With_Sharara-3.webp", "images/Product_Photos/Black_Kurti_With_Sharara-4.webp"], video:"", tag:"SALE", description:"Black embroidered kurti set with matching sharara bottomwear.", fabric:"Rayon", displayColor:"Black", sku:"Black_Kurti_With_Sharara", stock:99, color:"#e4e5d8"},
 ];
+
 
 const $ = (selector) => document.querySelector(selector);
 const productGrid = $("#productGrid");
@@ -172,7 +145,7 @@ function renderProducts() {
   $("#productSummary").textContent = `${visible.length} product${visible.length === 1 ? "" : "s"} to explore`;
   visible.forEach(product => {
     const card = document.createElement("article");
-    card.className = "product-card";
+    card.className = "product-card compact-product-card";
     card.innerHTML = `
       <div class="product-image" style="background:${product.color}">
         ${product.tag ? `<span class="product-tag">${escapeHtml(product.tag)}</span>` : ""}
@@ -182,72 +155,54 @@ function renderProducts() {
       </div>
       <div class="product-gallery" data-gallery="${product.id}">
         <div class="gallery-controls-row">
-          <div class="gallery-thumbnails" aria-label="Product photos">
-            <button type="button" class="gallery-thumb active" data-gallery-photo="${product.id}" data-src="${product.image}" aria-label="Main photo">
-              <img src="${product.image}" alt="">
-            </button>
+          <div class="gallery-dots" aria-label="Choose a product photo or video">
+            <button type="button" class="gallery-dot active" data-gallery-photo="${product.id}" data-src="${product.image}" aria-label="Main photo" aria-current="true"></button>
             ${(product.gallery || []).map((src, index) => `
-              <button type="button" class="gallery-thumb" data-gallery-photo="${product.id}" data-src="${src}" aria-label="Product photo ${index + 2}">
-                <img src="${src}" alt="">
-              </button>`).join("")}
-            <button type="button" class="gallery-thumb gallery-video-thumb" data-gallery-video="${product.id}" aria-label="Play ${escapeHtml(product.name)} video" hidden>
-              <span class="video-thumb-poster"><img src="${product.image}" alt=""><span class="video-play-icon" aria-hidden="true">▶</span><small>VIDEO</small></span>
-            </button>
+              <button type="button" class="gallery-dot" data-gallery-photo="${product.id}" data-src="${src}" aria-label="Product photo ${index + 2}"></button>`).join("")}
+            <button type="button" class="gallery-dot gallery-video-dot" data-gallery-video="${product.id}" aria-label="Play ${escapeHtml(product.name)} video" hidden></button>
           </div>
         </div>
       </div>
-      <div class="product-info">
+      <div class="product-info compact-product-info">
         <span class="product-category">${escapeHtml(product.category)}</span>
         <h3>${escapeHtml(product.name)}</h3>
-        <p class="product-description">${escapeHtml(product.description)}</p>
-        <div class="product-rating" aria-label="Rated ${Number(product.rating).toFixed(1)} out of 5 based on ${Number(product.reviews).toLocaleString("en-IN")} ratings">
-          <span class="rating-star" aria-hidden="true">★</span>
-          <strong>${Number(product.rating).toFixed(1)}</strong>
-          <span class="rating-count">(${Number(product.reviews).toLocaleString("en-IN")})</span>
-        </div>
-        <div class="product-pricing" aria-label="Discounted price">
-          <span class="price">${catalogMoney(product.price)}</span>
+        <div class="product-pricing compact-product-pricing" aria-label="Price ${catalogMoney(product.price)}, MRP ${catalogMoney(product.mrp || 1499)}, ${Math.round((1 - product.price / (product.mrp || 1499)) * 100)} percent off">
+          <strong class="price">${catalogMoney(product.price)}</strong>
           <span class="mrp-label">MRP <del>${catalogMoney(product.mrp || 1499)}</del></span>
           <span class="discount-badge">${Math.round((1 - product.price / (product.mrp || 1499)) * 100)}% OFF</span>
         </div>
-        <div class="product-buy">
-          <div class="product-actions">
-            <button class="add-button" type="button" data-add="${product.id}">＋ Add to cart</button>
-            <button class="buy-now-button" type="button" data-buy="${product.id}">Buy Now</button>
-          </div>
-        </div>
+        <button class="view-catalog-button" type="button" data-view-catalog="${product.id}">View Catalog <span aria-hidden="true">↗</span></button>
       </div>`;
     productGrid.appendChild(card);
 
-    // Optional local media: missing photos or videos are hidden gracefully.
-    card.querySelectorAll("[data-gallery-photo]").forEach(thumb => {
-      const image = thumb.querySelector("img");
+    // Remove failed optional gallery items without breaking the remaining photos.
+    card.querySelectorAll("[data-gallery-photo]").forEach(dot => {
+      const image = new Image();
       image.addEventListener("error", () => {
-        if (thumb.dataset.src !== product.image) thumb.remove();
+        if (dot.dataset.src !== product.image) dot.remove();
         updateGalleryControls(card, product);
       });
       image.addEventListener("load", () => updateGalleryControls(card, product));
+      image.src = dot.dataset.src;
     });
     const mainPhoto = card.querySelector(".catalog-photo");
     const video = card.querySelector("[data-main-video]");
-    const videoThumb = card.querySelector("[data-gallery-video]");
-    // Mobile performance: do not download product videos while the catalog is only being viewed.
-    // Load an available video only after the customer opens its VIDEO thumbnail.
+    const videoDot = card.querySelector("[data-gallery-video]");
     video.muted = true;
     video.defaultMuted = true;
     video.preload = "none";
     video.playsInline = true;
     if (product.video) {
       video.dataset.videoSrc = product.video;
-      videoThumb.hidden = false;
+      videoDot.hidden = false;
     } else {
-      videoThumb.hidden = true;
+      videoDot.hidden = true;
     }
     video.addEventListener("error", () => {
       video.pause();
       video.hidden = true;
       mainPhoto.hidden = false;
-      videoThumb.hidden = true;
+      videoDot.hidden = true;
       updateGalleryControls(card, product);
     });
     updateGalleryControls(card, product);
@@ -262,7 +217,7 @@ function updateGalleryControls(card, product) {
   const hasVideo = videoThumb && !videoThumb.hidden;
   next.hidden = extraPhotos.length === 0 && !hasVideo;
   const gallery = card.querySelector(".product-gallery");
-  gallery.hidden = extraPhotos.length === 0 && !hasVideo;
+  gallery.hidden = photoThumbs.length <= 1 && !hasVideo;
 }
 
 function escapeHtml(value) {
@@ -271,7 +226,7 @@ function escapeHtml(value) {
   }[char]));
 }
 
-function addToCart(id) {
+function addToCart(id, selectedSize = "") {
   const product = products.find(item => item.id === Number(id));
   if (!product) {
     showToast("This catalog could not be added. Please refresh the page.");
@@ -279,22 +234,23 @@ function addToCart(id) {
   }
   if (!Array.isArray(cartUnitSizes[id])) cartUnitSizes[id] = [];
   cart[id] = (cart[id] || 0) + 1;
-  cartUnitSizes[id].push("");
+  cartUnitSizes[id].push(selectedSize || "");
   renderCart();
   // Add to Cart should only show a brief confirmation; keep the catalog visible.
   showToast(`${product.name} added to your cart.`);
 
 }
 
-function buyNow(id) {
+function buyNow(id, selectedSize = "", quantity = 1) {
   // Buy Now starts checkout with the selected catalog only.
-  cart = { [id]: 1 };
+  const count = Math.max(1, Math.min(10, Number(quantity) || 1));
+  cart = { [id]: count };
   Object.keys(cartUnitSizes).forEach(key => delete cartUnitSizes[key]);
-  cartUnitSizes[id] = [""];
+  cartUnitSizes[id] = Array.from({ length: count }, () => selectedSize || "");
   renderCart();
   openCart();
   startSizeStep();
-  showToast("Select a clothing size first.");
+  showToast(selectedSize ? "Catalog added. Confirm size and delivery details." : "Select a clothing size first.");
 }
 
 function startSizeStep() {
@@ -664,11 +620,217 @@ document.addEventListener("keydown", event => {
   }
 });
 
+// Product details popup: keep listing cards compact and show full details on request.
+let activeCatalogProduct = null;
+let activeCatalogMedia = [];
+let activeCatalogMediaIndex = 0;
+let selectedCatalogSize = "";
+let catalogQuantity = 1;
+
+const catalogDetailsModal = $("#catalogDetailsModal");
+const detailGalleryDots = $("#detailGalleryDots");
+const detailProductImage = $("#detailProductImage");
+const detailProductVideo = $("#detailProductVideo");
+
+function updateDetailSku() {
+  if (!activeCatalogProduct) return;
+  const sku = activeCatalogProduct.sku || `KC-${String(activeCatalogProduct.id).padStart(3, "0")}`;
+  $("#detailProductSku").textContent = `SKU: ${sku}${selectedCatalogSize ? `_${selectedCatalogSize}` : ""}`;
+}
+
+function updateCatalogSizeOptions() {
+  $("#detailSizeOptions").querySelectorAll("[data-detail-size]").forEach(button => {
+    const active = button.dataset.detailSize === selectedCatalogSize;
+    button.classList.toggle("selected", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+  updateDetailSku();
+}
+
+function clearCatalogSizeWarning() {
+  const section = document.querySelector(".detail-size-section");
+  const error = $("#detailSizeError");
+  if (section) section.classList.remove("size-selection-required");
+  if (error) error.hidden = true;
+}
+
+function requireCatalogSize() {
+  if (selectedCatalogSize) return true;
+  const section = document.querySelector(".detail-size-section");
+  const error = $("#detailSizeError");
+  if (section) section.classList.add("size-selection-required");
+  if (error) error.hidden = false;
+  showToast("Please select a size first.");
+  const options = $("#detailSizeOptions");
+  if (options) options.scrollIntoView({ behavior: "smooth", block: "center" });
+  const firstSize = options && options.querySelector("[data-detail-size]");
+  if (firstSize) firstSize.focus({ preventScroll: true });
+  return false;
+}
+
+// A dedicated listener ensures size clicks are always handled by the size control itself.
+const detailSizeOptions = $("#detailSizeOptions");
+if (detailSizeOptions) {
+  detailSizeOptions.addEventListener("click", event => {
+    const sizeButton = event.target instanceof Element ? event.target.closest("[data-detail-size]") : null;
+    if (!sizeButton || !detailSizeOptions.contains(sizeButton)) return;
+    selectedCatalogSize = sizeButton.dataset.detailSize || "";
+    clearCatalogSizeWarning();
+    updateCatalogSizeOptions();
+  });
+}
+
+function updateDetailGallery(index = activeCatalogMediaIndex) {
+  if (!activeCatalogMedia.length) return;
+  activeCatalogMediaIndex = (index + activeCatalogMedia.length) % activeCatalogMedia.length;
+  const item = activeCatalogMedia[activeCatalogMediaIndex];
+  if (item.type === "video") {
+    detailProductImage.hidden = true;
+    detailProductVideo.hidden = false;
+    if (detailProductVideo.getAttribute("src") !== item.src) {
+      detailProductVideo.pause();
+      detailProductVideo.src = item.src;
+      detailProductVideo.load();
+    }
+  } else {
+    detailProductVideo.pause();
+    detailProductVideo.hidden = true;
+    detailProductVideo.removeAttribute("src");
+    detailProductVideo.load();
+    detailProductImage.src = item.src;
+    detailProductImage.alt = item.alt;
+    detailProductImage.hidden = false;
+  }
+  detailGalleryDots.querySelectorAll("[data-detail-gallery-index]").forEach((button, i) => {
+    const active = i === activeCatalogMediaIndex;
+    button.classList.toggle("active", active);
+    if (active) button.setAttribute("aria-current", "true");
+    else button.removeAttribute("aria-current");
+  });
+  $("#detailGalleryPrev").hidden = activeCatalogMedia.length < 2;
+  $("#detailGalleryNext").hidden = activeCatalogMedia.length < 2;
+}
+
+function openCatalogDetails(id) {
+  const product = products.find(item => item.id === Number(id));
+  if (!product || !catalogDetailsModal) return;
+  activeCatalogProduct = product;
+  selectedCatalogSize = "";
+  catalogQuantity = 1;
+  clearCatalogSizeWarning();
+  $("#detailProductCategory").textContent = product.category;
+  $("#detailProductName").textContent = product.name;
+  $("#detailProductRating").innerHTML = `<span aria-hidden="true">★</span> <strong>${Number(product.rating).toFixed(1)}</strong> <span>(${Number(product.reviews).toLocaleString("en-IN")} reviews)</span>`;
+  $("#detailProductPricing").innerHTML = `<strong>${catalogMoney(product.price)}</strong><span class="detail-mrp">MRP <del>${catalogMoney(product.mrp || 1499)}</del></span><span class="detail-discount">${Math.round((1 - product.price / (product.mrp || 1499)) * 100)}% OFF</span>`;
+  $("#detailProductStock").textContent = `In Stock · ${Number(product.stock || 99).toLocaleString("en-IN")} available`;
+  $("#detailProductColor").textContent = product.displayColor || "As shown in photos";
+  $("#detailProductFabric").textContent = product.fabric || "As shown in product details";
+  $("#detailProductDescription").textContent = product.description || "Please view the product photos for design details.";
+  $("#detailProductSku").textContent = `SKU: ${product.sku || `KC-${String(product.id).padStart(3, "0")}`}`;
+  $("#detailQuantity").textContent = "1";
+  updateCatalogSizeOptions();
+  activeCatalogMedia = [product.image, ...(product.gallery || [])]
+    .filter(Boolean)
+    .map((src, i) => ({ type: "photo", src, alt: `${product.name} photo ${i + 1}` }));
+  if (product.video) activeCatalogMedia.push({ type: "video", src: product.video, alt: `${product.name} video` });
+  detailGalleryDots.innerHTML = activeCatalogMedia.map((item, i) => `
+    <button type="button" class="detail-gallery-dot ${i === 0 ? "active" : ""}" data-detail-gallery-index="${i}" aria-label="${item.type === "video" ? "Show product video" : `Show photo ${i + 1}`}" ${i === 0 ? 'aria-current="true"' : ""}>${item.type === "video" ? "▶" : ""}</button>`).join("");
+  updateDetailGallery(0);
+  catalogDetailsModal.hidden = false;
+  document.body.classList.add("catalog-details-open");
+  $("#closeCatalogDetails").focus();
+}
+
+function closeCatalogDetails() {
+  if (!catalogDetailsModal || catalogDetailsModal.hidden) return;
+  catalogDetailsModal.hidden = true;
+  document.body.classList.remove("catalog-details-open");
+  detailProductVideo.pause();
+  detailProductVideo.removeAttribute("src");
+  detailProductVideo.load();
+  activeCatalogProduct = null;
+  activeCatalogMedia = [];
+}
+
+catalogDetailsModal.addEventListener("click", event => {
+  const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+  if (target && target.closest("[data-close-catalog-details]")) {
+    closeCatalogDetails();
+    return;
+  }
+  const galleryDot = target && target.closest("[data-detail-gallery-index]");
+  if (galleryDot) {
+    updateDetailGallery(Number(galleryDot.dataset.detailGalleryIndex));
+    return;
+  }
+  const galleryNav = target && target.closest("[data-detail-gallery-nav]");
+  if (galleryNav) {
+    updateDetailGallery(activeCatalogMediaIndex + Number(galleryNav.dataset.detailGalleryNav));
+    return;
+  }
+  const quantityButton = target && target.closest("[data-detail-quantity]");
+  if (quantityButton) {
+    catalogQuantity = Math.max(1, Math.min(10, catalogQuantity + Number(quantityButton.dataset.detailQuantity)));
+    $("#detailQuantity").textContent = String(catalogQuantity);
+    return;
+  }
+  const addButton = target && target.closest("[data-detail-add]");
+  if (addButton) {
+    if (!activeCatalogProduct || !requireCatalogSize()) return;
+    for (let i = 0; i < catalogQuantity; i += 1) addToCart(activeCatalogProduct.id, selectedCatalogSize);
+    closeCatalogDetails();
+    return;
+  }
+  const buyButton = target && target.closest("[data-detail-buy]");
+  if (buyButton && activeCatalogProduct) {
+    if (!requireCatalogSize()) return;
+    const productId = activeCatalogProduct.id;
+    const size = selectedCatalogSize;
+    const qty = catalogQuantity;
+    closeCatalogDetails();
+    buyNow(productId, size, qty);
+  }
+});
+
+$("#closeCatalogDetails").addEventListener("click", closeCatalogDetails);
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && catalogDetailsModal && !catalogDetailsModal.hidden) closeCatalogDetails();
+  if (!catalogDetailsModal || catalogDetailsModal.hidden) return;
+  if (event.key === "ArrowRight") updateDetailGallery(activeCatalogMediaIndex + 1);
+  if (event.key === "ArrowLeft") updateDetailGallery(activeCatalogMediaIndex - 1);
+});
+
 // Full-screen viewer sequence contains all valid product photos and, when
 // available, the product video as the final gallery item.
 let lightboxItems = [];
 let lightboxIndex = 0;
 let lightboxCard = null;
+let lightboxZoom = 1;
+const LIGHTBOX_MIN_ZOOM = 1;
+const LIGHTBOX_MAX_ZOOM = 4;
+const LIGHTBOX_ZOOM_STEP = 0.5;
+
+function applyLightboxZoom() {
+  const img = $("#photoLightboxImage");
+  if (!img) return;
+  img.style.transform = `scale(${lightboxZoom})`;
+  img.style.cursor = lightboxZoom > 1 ? "zoom-out" : "zoom-in";
+  const zoomOut = $("#photoLightboxZoomOut");
+  const zoomIn = $("#photoLightboxZoomIn");
+  if (zoomOut) zoomOut.disabled = lightboxZoom <= LIGHTBOX_MIN_ZOOM;
+  if (zoomIn) zoomIn.disabled = lightboxZoom >= LIGHTBOX_MAX_ZOOM;
+  img.setAttribute("aria-label", lightboxZoom > 1 ? "Product photo zoomed in; click to reset zoom" : "Product photo full screen; click to zoom in");
+}
+
+function setLightboxZoom(value) {
+  lightboxZoom = Math.max(LIGHTBOX_MIN_ZOOM, Math.min(LIGHTBOX_MAX_ZOOM, Number(value) || 1));
+  applyLightboxZoom();
+}
+
+function resetLightboxZoom() {
+  lightboxZoom = 1;
+  applyLightboxZoom();
+}
 
 function stopLightboxVideo() {
   const video = $("#photoLightboxVideo");
@@ -682,10 +844,13 @@ function stopLightboxVideo() {
 function showLightboxItem(index) {
   if (!lightboxItems.length) return;
   lightboxIndex = (index + lightboxItems.length) % lightboxItems.length;
+  resetLightboxZoom();
   const item = lightboxItems[lightboxIndex];
   const img = $("#photoLightboxImage");
   const video = $("#photoLightboxVideo");
 
+  const zoomControls = document.querySelector(".photo-lightbox-zoom-controls");
+  if (zoomControls) zoomControls.hidden = item.type === "video";
   if (item.type === "video") {
     img.hidden = true;
     video.hidden = false;
@@ -735,6 +900,25 @@ function openPhotoLightbox(card, clickedSrc) {
   document.body.classList.add("photo-viewer-open");
   pushKailuUiHistory("photo");
 }
+
+// Open the same full-screen viewer directly from the product-details popup.
+function openDetailPhotoLightbox() {
+  if (!activeCatalogProduct || !activeCatalogMedia.length || detailProductImage.hidden) return;
+  lightboxCard = null;
+  lightboxItems = activeCatalogMedia.map(item => ({ ...item }));
+  showLightboxItem(activeCatalogMediaIndex);
+  $("#photoLightbox").hidden = false;
+  document.body.classList.add("photo-viewer-open");
+  pushKailuUiHistory("photo");
+}
+
+detailProductImage.addEventListener("click", openDetailPhotoLightbox);
+detailProductImage.addEventListener("keydown", event => {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    openDetailPhotoLightbox();
+  }
+});
 
 function moveLightboxPhoto(delta) {
   if (!lightboxItems.length) return;
@@ -793,7 +977,11 @@ productGrid.addEventListener("click", event => {
     video.hidden = true;
     main.hidden = false;
     main.src = photoButton.dataset.src;
-    card.querySelectorAll(".gallery-thumb").forEach(thumb => thumb.classList.toggle("active", thumb === photoButton));
+    card.querySelectorAll(".gallery-dot").forEach(dot => {
+      const active = dot === photoButton;
+      dot.classList.toggle("active", active);
+      if (active) dot.setAttribute("aria-current", "true"); else dot.removeAttribute("aria-current");
+    });
     return;
   }
   if (videoButton && !videoButton.hidden) {
@@ -813,7 +1001,11 @@ productGrid.addEventListener("click", event => {
     // Always start the product video muted; the visible speaker control can enable sound.
     video.muted = true;
     video.defaultMuted = true;
-    card.querySelectorAll(".gallery-thumb").forEach(thumb => thumb.classList.toggle("active", thumb === videoButton));
+    card.querySelectorAll(".gallery-dot").forEach(dot => {
+      const active = dot === videoButton;
+      dot.classList.toggle("active", active);
+      if (active) dot.setAttribute("aria-current", "true"); else dot.removeAttribute("aria-current");
+    });
     video.play().catch(() => {
       showToast("Video is loading. Tap Play when it appears.");
     });
@@ -839,8 +1031,14 @@ productGrid.addEventListener("keydown", event => {
 
 productGrid.addEventListener("click", event => {
   const target = event.target instanceof Element ? event.target : event.target.parentElement;
+  const viewButton = target && target.closest("[data-view-catalog]");
   const addButton = target && target.closest("[data-add]");
   const buyButton = target && target.closest("[data-buy]");
+  if (viewButton) {
+    event.preventDefault();
+    openCatalogDetails(Number(viewButton.dataset.viewCatalog));
+    return;
+  }
   if (addButton) {
     event.preventDefault();
     addToCart(Number(addButton.dataset.add));
@@ -872,6 +1070,26 @@ $("#photoLightbox").addEventListener("click", event => {
 });
 $("#photoLightboxPrev").addEventListener("click", () => moveLightboxPhoto(-1));
 $("#photoLightboxNext").addEventListener("click", () => moveLightboxPhoto(1));
+$("#photoLightboxZoomOut").addEventListener("click", event => {
+  event.stopPropagation();
+  setLightboxZoom(lightboxZoom - LIGHTBOX_ZOOM_STEP);
+});
+$("#photoLightboxZoomIn").addEventListener("click", event => {
+  event.stopPropagation();
+  setLightboxZoom(lightboxZoom + LIGHTBOX_ZOOM_STEP);
+});
+$("#photoLightboxZoomReset").addEventListener("click", event => {
+  event.stopPropagation();
+  resetLightboxZoom();
+});
+$("#photoLightboxImage").addEventListener("click", () => {
+  // A direct tap/click on the full-screen photo toggles between fit-to-screen and 2x zoom.
+  setLightboxZoom(lightboxZoom > 1 ? 1 : 2);
+});
+$("#photoLightboxImage").addEventListener("wheel", event => {
+  event.preventDefault();
+  setLightboxZoom(lightboxZoom + (event.deltaY < 0 ? LIGHTBOX_ZOOM_STEP : -LIGHTBOX_ZOOM_STEP));
+}, { passive: false });
 document.addEventListener("keydown", event => {
   if (event.key === "Escape" && !$("#photoLightbox").hidden) closePhotoLightbox();
   if (!$("#photoLightbox").hidden && event.key === "ArrowRight") moveLightboxPhoto(1);

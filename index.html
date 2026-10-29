@@ -159,12 +159,63 @@
       <button id="continueShoppingSuccess" class="success-continue" type="button">Continue Shopping</button>
     </div>
   </div>
+  <div id="catalogDetailsModal" class="catalog-details-modal" hidden role="dialog" aria-modal="true" aria-labelledby="detailProductName">
+    <button class="catalog-details-backdrop" type="button" data-close-catalog-details aria-label="Close catalog details"></button>
+    <section class="catalog-details-panel">
+      <button id="closeCatalogDetails" class="catalog-details-close" type="button" data-close-catalog-details aria-label="Close catalog details">×</button>
+      <div class="catalog-details-layout">
+        <div class="detail-media-column">
+          <div class="detail-media-stage">
+            <img id="detailProductImage" src="" alt="Product photo" tabindex="0" role="button" aria-label="Open product photo full screen; click to zoom">
+            <video id="detailProductVideo" controls muted playsinline preload="none" hidden aria-label="Product video"></video>
+            <button id="detailGalleryPrev" class="detail-gallery-nav detail-gallery-prev" type="button" data-detail-gallery-nav="-1" aria-label="Previous product photo">‹</button>
+            <button id="detailGalleryNext" class="detail-gallery-nav detail-gallery-next" type="button" data-detail-gallery-nav="1" aria-label="Next product photo">›</button>
+          </div>
+          <div id="detailGalleryDots" class="detail-gallery-dots" aria-label="Product photo and video options"></div>
+        </div>
+        <div class="detail-info-column">
+          <span id="detailProductCategory" class="product-category">ETHNIC COLLECTION</span>
+          <h2 id="detailProductName">Product name</h2>
+          <div id="detailProductRating" class="detail-product-rating"></div>
+          <div id="detailProductPricing" class="detail-product-pricing"></div>
+          <p id="detailProductStock" class="detail-product-stock">In Stock</p>
+          <div class="detail-field"><span class="detail-field-label">COLOR</span><span id="detailProductColor" class="detail-color-chip">As shown in photos</span></div>
+          <div class="detail-size-section">
+            <span class="detail-field-label">SELECT SIZE</span>
+            <div id="detailSizeOptions" class="detail-size-options" role="group" aria-label="Select clothing size">
+              <button type="button" class="size-button" data-detail-size="S" aria-pressed="false">S</button>
+              <button type="button" class="size-button" data-detail-size="M" aria-pressed="false">M</button>
+              <button type="button" class="size-button" data-detail-size="L" aria-pressed="false">L</button>
+              <button type="button" class="size-button" data-detail-size="XL" aria-pressed="false">XL</button>
+              <button type="button" class="size-button" data-detail-size="XXL" aria-pressed="false">XXL</button>
+              <button type="button" class="size-button" data-detail-size="3XL" aria-pressed="false">3XL</button>
+            </div>
+            <p id="detailSizeError" class="detail-size-error" role="alert" hidden>Please select a size before continuing.</p>
+          </div>
+          <p id="detailProductSku" class="detail-product-sku">SKU:</p>
+          <p class="detail-product-fabric"><strong>Fabric:</strong> <span id="detailProductFabric">Rayon</span></p>
+          <p id="detailProductDescription" class="detail-product-description"></p>
+          <div class="detail-quantity-row"><strong>Quantity</strong><div class="detail-quantity-control"><button type="button" data-detail-quantity="-1" aria-label="Decrease quantity">−</button><span id="detailQuantity">1</span><button type="button" data-detail-quantity="1" aria-label="Increase quantity">＋</button></div></div>
+          <div class="detail-product-actions">
+            <button type="button" class="detail-add-button" data-detail-add>＋ Add to Cart</button>
+            <button type="button" class="detail-buy-button" data-detail-buy>Buy Now</button>
+          </div>
+          <p class="detail-cod-note">✓ Cash on Delivery (COD) available. Delivery and final availability will be confirmed when placing the order.</p>
+        </div>
+      </div>
+    </section>
+  </div>
   <div id="photoLightbox" class="photo-lightbox" hidden role="dialog" aria-modal="true" aria-label="Full screen catalog photo and video">
     <button id="closePhotoLightbox" class="photo-lightbox-close" type="button" aria-label="Close full screen viewer">×</button>
     <button id="photoLightboxPrev" class="photo-lightbox-nav photo-lightbox-prev" type="button" aria-label="Previous photo or video">‹</button>
     <img id="photoLightboxImage" src="" alt="Catalog full screen photo">
     <video id="photoLightboxVideo" class="photo-lightbox-video" controls muted playsinline preload="none" hidden aria-label="Product video"></video>
     <button id="photoLightboxNext" class="photo-lightbox-nav photo-lightbox-next" type="button" aria-label="Next photo or video">›</button>
+    <div class="photo-lightbox-zoom-controls" aria-label="Photo zoom controls">
+      <button id="photoLightboxZoomOut" type="button" aria-label="Zoom out" title="Zoom out">−</button>
+      <button id="photoLightboxZoomIn" type="button" aria-label="Zoom in" title="Zoom in">＋</button>
+      <button id="photoLightboxZoomReset" type="button" aria-label="Reset zoom" title="Reset zoom">Reset</button>
+    </div>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="pincode-serviceability.js"></script>
