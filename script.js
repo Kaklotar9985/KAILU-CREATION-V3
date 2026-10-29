@@ -1,5 +1,5 @@
 // KAILU CREATION — catalog products and WhatsApp order settings.
-// IMPORTANT: Replace WHATSAPP_NUMBER with your number including country code,
+// IMPORTANT: Replace WHATSAPP_NUMBER with your number including country code, 
 // digits only. Example India: "919876543210" (no +, spaces, or hyphens).
 
 const WHATSAPP_NUMBER = "918160621151"; // Optional WhatsApp fallback
