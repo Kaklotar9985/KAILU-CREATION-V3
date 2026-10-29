@@ -1277,8 +1277,15 @@ function setActiveCatalogProduct(product) {
 
 function renderDetailGalleryDots() {
   if (!detailGalleryDots) return;
-  detailGalleryDots.innerHTML = activeCatalogMedia.map((item, i) => `
-    <button type="button" class="detail-gallery-dot ${i === activeCatalogMediaIndex ? "active" : ""}" data-detail-gallery-index="${i}" aria-label="${item.type === "video" ? "Show product video" : `Show photo ${i + 1}`}" ${i === activeCatalogMediaIndex ? 'aria-current="true"' : ""}>${item.type === "video" ? "▶" : ""}</button>`).join("");
+  const hasVideo = activeCatalogMedia.some(item => item.type === "video");
+  const playVideoButton = $("#detailPlayVideo");
+  if (playVideoButton) playVideoButton.hidden = !hasVideo;
+  detailGalleryDots.innerHTML = activeCatalogMedia.map((item, i) => {
+    const isVideo = item.type === "video";
+    const active = i === activeCatalogMediaIndex;
+    const label = isVideo ? "Play product video" : `Show photo ${i + 1}`;
+    return `<button type="button" class="detail-gallery-dot${isVideo ? " detail-gallery-video-dot" : ""}${active ? " active" : ""}" data-detail-gallery-index="${i}" aria-label="${label}" title="${label}" ${active ? 'aria-current="true"' : ""}>${isVideo ? "▶ VIDEO" : ""}</button>`;
+  }).join("");
 }
 
 function clearCatalogSizeWarning() {
@@ -1408,6 +1415,12 @@ catalogDetailsModal.addEventListener("click", event => {
   if (colorButton) {
     const nextProduct = products.find(product => product.id === Number(colorButton.dataset.detailColorId));
     if (nextProduct && getProductInventory(nextProduct) > 0) setActiveCatalogProduct(nextProduct);
+    return;
+  }
+  const playVideoButton = target && target.closest("#detailPlayVideo");
+  if (playVideoButton) {
+    const videoIndex = activeCatalogMedia.findIndex(item => item.type === "video");
+    if (videoIndex >= 0) updateDetailGallery(videoIndex);
     return;
   }
   const galleryDot = target && target.closest("[data-detail-gallery-index]");
