@@ -19,7 +19,7 @@ function isImageAvailable(src) {
   if (imageAvailabilityCache.has(src)) return imageAvailabilityCache.get(src);
   const result = new Promise(resolve => {
     const image = new Image();
-    image.addEventListener("load", () => resolve(true), { once: true });
+    image.addEventListener("load", () => resolve(image.naturalWidth > 0 && image.naturalHeight > 0), { once: true });
     image.addEventListener("error", () => resolve(false), { once: true });
     image.src = src;
   });
@@ -1023,20 +1023,28 @@ const detailProductImage = $("#detailProductImage");
 const detailProductVideo = $("#detailProductVideo");
 
 detailProductImage.addEventListener("error", () => {
-  const failedSrc = detailProductImage.dataset.currentImageSrc || "";
+  const failedSrc = detailProductImage.dataset.currentImageSrc || detailProductImage.getAttribute("src") || "";
   if (!failedSrc || failedSrc === PHOTO_FALLBACK) return;
+
+  // Mark the URL invalid, and remove it from the carousel if it is still present.
   imageAvailabilityCache.set(failedSrc, Promise.resolve(false));
   const failedIndex = activeCatalogMedia.findIndex(item => item.type === "photo" && item.src === failedSrc);
-  if (failedIndex < 0) return;
-  activeCatalogMedia.splice(failedIndex, 1);
-  if (failedIndex <= activeCatalogMediaIndex) {
-    activeCatalogMediaIndex = Math.min(failedIndex, Math.max(0, activeCatalogMedia.length - 1));
+  if (failedIndex >= 0) {
+    activeCatalogMedia.splice(failedIndex, 1);
+    if (failedIndex <= activeCatalogMediaIndex) {
+      activeCatalogMediaIndex = Math.min(failedIndex, Math.max(0, activeCatalogMedia.length - 1));
+    }
   }
-  renderDetailGalleryDots();
+
+  // Even if the failed URL no longer matches the active gallery (for example,
+  // a slow request finishing after a product switch), never leave a broken <img>.
   if (activeCatalogMedia.length) {
+    activeCatalogMediaIndex = Math.max(0, Math.min(activeCatalogMediaIndex, activeCatalogMedia.length - 1));
+    renderDetailGalleryDots();
     updateDetailGallery(activeCatalogMediaIndex);
     return;
   }
+
   detailProductVideo.pause();
   detailProductVideo.hidden = true;
   detailProductVideo.removeAttribute("src");
@@ -1047,6 +1055,7 @@ detailProductImage.addEventListener("error", () => {
   detailProductImage.hidden = false;
   $("#detailGalleryPrev").hidden = true;
   $("#detailGalleryNext").hidden = true;
+  renderDetailGalleryDots();
 });
 
 function updateDetailSku() {
@@ -1149,7 +1158,7 @@ function setActiveCatalogProduct(product) {
   renderColorOptions();
   updateCatalogSizeOptions();
 
-  const candidatePhotos = [product.image, ...(product.gallery || [])].filter(Boolean);
+  const candidatePhotos = [...new Set([product.image, ...(product.gallery || [])].filter(Boolean))];
   const candidateVideo = product.video ? { type: "video", src: product.video, alt: `${product.name} video` } : null;
 
   // Do not expose missing photo links in the detail carousel. Keep a clean placeholder
