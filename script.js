@@ -230,7 +230,14 @@ function normalizeProduct(record, index) {
     description: String(readCatalogField(record, "description", "Description") ?? ""),
     image: images[0] || "",
     gallery: images.slice(1),
-    video: String(readCatalogField(record, "videoUrl", "Video Link", "videoLink", "video") ?? ""),
+    // An explicitly present videoUrl is authoritative, including an empty value.
+    // This prevents an old/alternate "Video Link" field from showing a VIDEO
+    // button on catalogs where videoUrl is intentionally blank.
+    video: String(
+      Object.prototype.hasOwnProperty.call(record, "videoUrl")
+        ? (record.videoUrl ?? "")
+        : (readCatalogField(record, "Video Link", "videoLink", "video") ?? "")
+    ).trim(),
     localVideo: String(readCatalogField(record, "localVideo") ?? ""),
     tag,
     color: background,
