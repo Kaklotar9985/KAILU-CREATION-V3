@@ -129,6 +129,8 @@
       <div class="checkout-heading">Delivery details</div>
       <label class="field-label" for="customerName">Full name <span class="required-mark">*</span></label>
       <input id="customerName" class="customer-input" type="text" placeholder="Enter your full name" autocomplete="name" required>
+      <label class="field-label" for="customerEmail">Email Address <span class="optional-mark">(optional)</span></label>
+      <input id="customerEmail" class="customer-input" type="email" placeholder="Enter your email address" autocomplete="email">
       <label class="field-label" for="mobileNumber">Mobile Number <span class="required-mark">*</span></label>
       <input id="mobileNumber" class="customer-input" type="tel" inputmode="numeric" pattern="[6-9][0-9]{9}" minlength="10" maxlength="10" placeholder="Enter 10-digit mobile number" autocomplete="tel-national" required>
       <label class="field-label" for="houseBuilding">House No. / Building Name <span class="required-mark">*</span></label>
@@ -179,17 +181,11 @@
           <div id="detailProductRating" class="detail-product-rating"></div>
           <div id="detailProductPricing" class="detail-product-pricing"></div>
           <p id="detailProductStock" class="detail-product-stock">In Stock</p>
-          <div class="detail-field"><span class="detail-field-label">COLOR</span><span id="detailProductColor" class="detail-color-chip">As shown in photos</span></div>
+          <div class="detail-field detail-color-field"><span class="detail-field-label">COLOR</span><span id="detailProductColor" class="detail-color-chip">As shown in photos</span></div>
+          <div id="detailColorOptions" class="detail-color-options" role="group" aria-label="Choose color variant"></div>
           <div class="detail-size-section">
             <span class="detail-field-label">SELECT SIZE</span>
-            <div id="detailSizeOptions" class="detail-size-options" role="group" aria-label="Select clothing size">
-              <button type="button" class="size-button" data-detail-size="S" aria-pressed="false">S</button>
-              <button type="button" class="size-button" data-detail-size="M" aria-pressed="false">M</button>
-              <button type="button" class="size-button" data-detail-size="L" aria-pressed="false">L</button>
-              <button type="button" class="size-button" data-detail-size="XL" aria-pressed="false">XL</button>
-              <button type="button" class="size-button" data-detail-size="XXL" aria-pressed="false">XXL</button>
-              <button type="button" class="size-button" data-detail-size="3XL" aria-pressed="false">3XL</button>
-            </div>
+            <div id="detailSizeOptions" class="detail-size-options" role="group" aria-label="Select an available clothing size"></div>
             <p id="detailSizeError" class="detail-size-error" role="alert" hidden>Please select a size before continuing.</p>
           </div>
           <p id="detailProductSku" class="detail-product-sku">SKU:</p>
@@ -219,6 +215,7 @@
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="pincode-serviceability.js"></script>
+  <script src="products-data.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

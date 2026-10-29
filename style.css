@@ -2394,3 +2394,23 @@ body.catalog-details-open{overflow:hidden!important}
   .photo-lightbox-zoom-controls button { min-width: 34px; height: 34px; font-size: 20px; padding: 0 7px; }
   .photo-lightbox-zoom-controls button:last-child { min-width: 48px; font-size: 11px; }
 }
+
+
+/* Data-driven color variants and inventory labels */
+.product-color-variants{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin:11px 0 13px;font-size:10px;color:var(--muted)}
+.product-color-label{font-weight:700;margin-right:2px}
+.product-color-choice{border:1px solid #d9dfd9;background:#fff;border-radius:999px;padding:5px 8px;color:var(--green);font-size:10px;line-height:1.25;cursor:pointer}
+.product-color-choice:hover{border-color:var(--green);background:#f4f8f4}
+.product-color-choice:disabled{opacity:.55;cursor:not-allowed;text-decoration:line-through}
+.detail-color-field{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.detail-color-options{display:flex;flex-wrap:wrap;gap:7px;margin:-14px 0 20px}
+.detail-color-button{border:1px solid #d9dfd9;border-radius:7px;background:#fff;color:var(--ink);padding:8px 11px;font-size:12px;font-weight:600;cursor:pointer}
+.detail-color-button.selected{border:2px solid var(--green);background:#f1f7f2;color:var(--green);padding:7px 10px}
+.detail-color-button:disabled{opacity:.55;cursor:not-allowed;text-decoration:line-through}
+.detail-size-options .size-button.size-out-of-stock{min-width:unset;padding:0 9px;color:#8b8b8b;border-color:#e0e0e0;background:#f5f5f5;font-size:10px;cursor:not-allowed;box-shadow:none}
+.detail-size-options .size-button:disabled{opacity:.7;cursor:not-allowed}
+.detail-product-stock.stock-out{color:#bd2c2c}
+#cartItems .cart-size-button:disabled{opacity:.55;cursor:not-allowed;text-decoration:line-through}
+@media(max-width:620px){.product-color-choice{font-size:9px;padding:5px 6px}.detail-color-options{gap:5px}.detail-color-button{font-size:11px;padding:7px 9px}.detail-size-options .size-button.size-out-of-stock{font-size:9px;padding:0 6px}}
+
+.optional-mark{font-size:10px;font-weight:400;color:var(--muted)}

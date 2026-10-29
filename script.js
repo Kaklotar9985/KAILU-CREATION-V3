@@ -3,7 +3,7 @@
 // digits only. Example India: "919876543210" (no +, spaces, or hyphens).
 
 const WHATSAPP_NUMBER = "918160621151"; // Optional WhatsApp fallback
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwD97xQD3dIEExZ02b3H6Nb5m1CIs6KyHI9EOL5jQTJgkK_RB17ym81WYpyeGWowrD9YQ/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyIyoGbUmWSd3I164G45QWCnyz4FQcQiYgH5LMTnVYMg5DoH9dMh-6EljOoo4WqLmXSPw/exec";
 const CURRENCY = "INR";
 
 const PINCODE_DATA = window.KAILU_PINCODE_DATA || Object.create(null);
@@ -84,14 +84,184 @@ function validatePincode(options = {}) {
   return { valid: true, message: "Pincode verified.", record: match };
 }
 
-const products = [
-  {id:1, name:"Navy Blue Floral Printed Anarkali Kurta Pant Dupatta Set", category:"3-Piece Kurti Set", price:349, mrp:1499, rating:4.2, reviews:5030, image:"images/Product_Photos/NavyBlue_Gown-01.webp", gallery:["images/Product_Photos/NavyBlue_Gown-02.webp", "images/Product_Photos/NavyBlue_Gown-03.webp", "images/Product_Photos/NavyBlue_Gown-04.webp"], video:"videos/Product_Videos/NavyBlue_Gown.mp4", tag:"SALE", description:"3-piece ethnic suit with matching printed dupatta and traditional motifs.", fabric:"Rayon", displayColor:"Navy Blue", sku:"NavyBlue_Gown", stock:99, color:"#e9dfd0"},
-  {id:2, name:"Mustard Yellow Floral Printed Kurta Pant Dupatta Set", category:"3-Piece Kurti Set", price:349, mrp:1499, rating:4.4, reviews:6531, image:"images/Product_Photos/Mustard_Yellow-01.webp", gallery:["images/Product_Photos/Mustard_Yellow-02.webp", "images/Product_Photos/Mustard_Yellow-03.webp", "images/Product_Photos/Mustard_Yellow-04.webp"], video:"", tag:"SALE", description:"Floral printed kurta, matching pant and coordinating dupatta.", fabric:"Cotton Blend", displayColor:"Mustard Yellow", sku:"Mustard_Yellow", stock:99, color:"#f0e4c9"},
-  {id:3, name:"Cream Ethnic Printed Kurta with Bottomwear and Dupatta", category:"3-Piece Kurti Set", price:349, mrp:1499, rating:4.6, reviews:7609, image:"images/Product_Photos/Cream_Ethnic-01.webp", gallery:["images/Product_Photos/Cream_Ethnic-02.webp", "images/Product_Photos/Cream_Ethnic-03.webp", "images/Product_Photos/Cream_Ethnic-04.webp"], video:"videos/Product_Videos/Cream_Ethnic.mp4", tag:"SALE", description:"Printed ethnic kurta set with matching bottomwear and a patterned dupatta.", fabric:"Cotton Blend", displayColor:"Cream", sku:"Cream_Ethnic", stock:99, color:"#e4e5d8"},
-  {id:4, name:"Black Kurti With Bottomwear", category:"Corset", price:349, mrp:1499, rating:4.8, reviews:5574, image:"images/Product_Photos/Black_Kurti_Paint-01.webp", gallery:["images/Product_Photos/Black_Kurti_Paint-02.webp", "images/Product_Photos/Black_Kurti_Paint-03.webp", "images/Product_Photos/Black_Kurti_Paint-04.webp"], video:"videos/Product_Videos/Black_Kurti_Paint.mp4", tag:"SALE", description:"Black kurti with white embroidery and matching bottomwear.", fabric:"Rayon", displayColor:"Black", sku:"Black_Kurti_Paint", stock:99, color:"#e4e5d8"},
-  {id:5, name:"Women Maroon Kurti Sharara Ethnic Wear Set", category:"Corset", price:349, mrp:1999, rating:4.8, reviews:5574, image:"images/Product_Photos/Maroon_Kurti_With_Sharara-01.webp", gallery:["images/Product_Photos/Maroon_Kurti_With_Sharara-02.webp", "images/Product_Photos/Maroon_Kurti_With_Sharara-03.webp", "images/Product_Photos/Maroon_Kurti_With_Sharara-04.webp"], video:"", tag:"SALE", description:"Maroon ethnic kurti with matching sharara bottomwear.", fabric:"Rayon", displayColor:"Maroon", sku:"Maroon_Kurti_With_Sharara", stock:99, color:"#e4e5d8"},
-  {id:6, name:"Women Black Kurti Sharara Ethnic Wear Set", category:"Corset", price:349, mrp:1999, rating:4.8, reviews:5574, image:"images/Product_Photos/Black_Kurti_With_Sharara-01.webp", gallery:["images/Product_Photos/Black_Kurti_With_Sharara-02.webp", "images/Product_Photos/Black_Kurti_With_Sharara-03.webp", "images/Product_Photos/Black_Kurti_With_Sharara-04.webp"], video:"", tag:"SALE", description:"Black embroidered kurti set with matching sharara bottomwear.", fabric:"Rayon", displayColor:"Black", sku:"Black_Kurti_With_Sharara", stock:99, color:"#e4e5d8"},
-];
+// products-data.js is the single source of catalog truth. Both the current
+// grouped format (products + size variants) and a row-per-size spreadsheet
+// export are supported here, so catalog values are never duplicated below.
+function readCatalogField(object, ...keys) {
+  for (const key of keys) {
+    if (object && Object.prototype.hasOwnProperty.call(object, key)) {
+      const value = object[key];
+      if (value !== undefined && value !== null && String(value).trim() !== "") return value;
+    }
+  }
+  return undefined;
+}
+
+function toInventory(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+}
+
+function normalizeCatalogRecords(records) {
+  if (!Array.isArray(records)) return [];
+  // A flattened data export can contain one record per SKU/size. Merge rows
+  // with the same Catalog ID (or fallback identity) into one color variant.
+  const hasNestedVariants = records.some(record => Array.isArray(record.variants));
+  if (hasNestedVariants) return records;
+
+  const merged = new Map();
+  records.forEach((record, index) => {
+    const catalogId = readCatalogField(record, "catalogId", "Catalog ID", "id", "ID");
+    const groupCode = readCatalogField(record, "groupCode", "Group Code", "group_code");
+    const color = readCatalogField(record, "color", "Color");
+    const name = readCatalogField(record, "name", "Product Name", "productName");
+    const baseSku = readCatalogField(record, "baseSku", "Base SKU", "Short Name", "shortName", "sku", "Sku", "SKU");
+    const key = String(catalogId ?? `${groupCode ?? "group"}::${color ?? "color"}::${baseSku ?? name ?? index}`);
+    if (!merged.has(key)) {
+      const first = { ...record, variants: [] };
+      merged.set(key, first);
+    }
+    const target = merged.get(key);
+    target.variants.push({
+      sku: readCatalogField(record, "sku", "Sku", "SKU", "variantSku"),
+      size: readCatalogField(record, "size", "Size"),
+      inventory: readCatalogField(record, "inventory", "Inventory", "stock", "Stock"),
+      mrp: readCatalogField(record, "mrp", "MRP Price", "mrpPrice", "MRP"),
+      price: readCatalogField(record, "price", "Sell Price", "sellPrice", "Selling Price"),
+      rating: readCatalogField(record, "rating", "Rating"),
+      reviews: readCatalogField(record, "reviews", "Reviews"),
+      tag: readCatalogField(record, "tag", "Tag")
+    });
+  });
+  return [...merged.values()];
+}
+
+const rawCatalogProducts = normalizeCatalogRecords(window.KAILU_PRODUCTS || window.products || []);
+const SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL", "2XL", "3XL", "4XL", "5XL"];
+const COLOR_BACKGROUNDS = {
+  blue: "#e9dfd0", navy: "#e9dfd0", mustard: "#f0e4c9", yellow: "#f0e4c9",
+  cream: "#e4e5d8", black: "#e4e5d8", maroon: "#f0e0e4", red: "#f0e0e4",
+  white: "#f5f3ee", green: "#e1eadf", pink: "#f4e1e8", purple: "#e9e1f2"
+};
+
+function normalizeProduct(record, index) {
+  const rawImages = readCatalogField(record, "images", "Images");
+  const images = Array.isArray(rawImages)
+    ? rawImages.map(image => typeof image === "string" ? image : readCatalogField(image, "url", "link", "src")).filter(Boolean)
+    : [
+        readCatalogField(record, "image1Link", "Image-1(Front) Link", "Image-1 (Front) Link", "image", "Image"),
+        readCatalogField(record, "image2Link", "Image-2 Link"),
+        readCatalogField(record, "image3Link", "Image-3 Link"),
+        readCatalogField(record, "image4Link", "Image-4 Link"),
+        readCatalogField(record, "image5Link", "Image-5 Link")
+      ].filter(Boolean);
+  const rawVariants = Array.isArray(record.variants) && record.variants.length ? record.variants : [record];
+  const variants = rawVariants.map(variant => {
+    const ratingRaw = Number(readCatalogField(variant, "rating", "Rating") ?? readCatalogField(record, "rating", "Rating") ?? 0);
+    // Tolerate spreadsheet exports where 4.8 is accidentally represented as 48.
+    const rating = ratingRaw > 5 && ratingRaw <= 50 ? ratingRaw / 10 : ratingRaw;
+    const size = String(readCatalogField(variant, "size", "Size") ?? "").trim();
+    const inventory = toInventory(readCatalogField(variant, "inventory", "Inventory", "stock", "Stock"));
+    const variantSku = String(readCatalogField(variant, "sku", "Sku", "SKU", "variantSku") ?? "").trim();
+    const baseSkuRaw = String(readCatalogField(record, "baseSku", "Base SKU") ?? "").trim();
+    const fallbackBaseSku = String(readCatalogField(record, "sku", "Sku", "SKU") ?? "").replace(/_(XS|S|M|L|XL|XXL|2XL|3XL|4XL|5XL)$/i, "");
+    const baseSku = baseSkuRaw || fallbackBaseSku;
+    return {
+      sku: variantSku || (baseSku && size ? `${baseSku}_${size}` : baseSku),
+      size,
+      inventory,
+      mrp: Number(readCatalogField(variant, "mrp", "MRP Price", "mrpPrice", "MRP") ?? readCatalogField(record, "mrp", "MRP Price", "mrpPrice", "MRP") ?? 0),
+      price: Number(readCatalogField(variant, "price", "Sell Price", "sellPrice", "Selling Price") ?? readCatalogField(record, "price", "Sell Price", "sellPrice", "Selling Price") ?? 0),
+      rating: Number.isFinite(rating) ? rating : 0,
+      reviews: Number(readCatalogField(variant, "reviews", "Reviews") ?? readCatalogField(record, "reviews", "Reviews") ?? 0),
+      tag: String(readCatalogField(variant, "tag", "Tag") ?? readCatalogField(record, "tag", "Tag") ?? "").trim()
+    };
+  }).filter(variant => variant.size || variant.sku);
+  variants.sort((a, b) => {
+    const ai = SIZE_ORDER.indexOf(a.size.toUpperCase());
+    const bi = SIZE_ORDER.indexOf(b.size.toUpperCase());
+    return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi) || a.size.localeCompare(b.size);
+  });
+
+  const idValue = readCatalogField(record, "id", "Catalog ID", "catalogId", "ID");
+  const baseSku = String(readCatalogField(record, "baseSku", "Base SKU") ?? variants[0]?.sku?.replace(/_(XS|S|M|L|XL|XXL|2XL|3XL|4XL|5XL)$/i, "") ?? "");
+  const name = String(readCatalogField(record, "name", "Product Name", "productName") ?? readCatalogField(record, "shortName", "Short Name") ?? `Product ${index + 1}`);
+  const displayColor = String(readCatalogField(record, "color", "Color") ?? "As shown in photos");
+  const rawTag = String(readCatalogField(record, "tag", "Tag") ?? variants[0]?.tag ?? "SALE");
+  const tag = rawTag.toLowerCase() === "sell" ? "SALE" : rawTag.toUpperCase();
+  const groupCode = String(readCatalogField(record, "groupCode", "Group Code", "group_code") ?? idValue ?? index + 1);
+  const firstAvailable = variants.find(variant => variant.inventory > 0) || variants[0] || {};
+  const rating = Number(firstAvailable.rating ?? 0);
+  const background = COLOR_BACKGROUNDS[displayColor.toLowerCase()] || "#f2eee8";
+
+  return {
+    id: Number.isFinite(Number(idValue)) ? Number(idValue) : index + 1,
+    catalogId: String(idValue ?? index + 1),
+    groupCode,
+    category: String(readCatalogField(record, "category", "Category") ?? "Collection"),
+    name,
+    shortName: String(readCatalogField(record, "shortName", "Short Name") ?? name),
+    baseSku,
+    sku: baseSku,
+    displayColor,
+    colorName: displayColor,
+    fabric: String(readCatalogField(record, "fabric", "Fabric") ?? ""),
+    description: String(readCatalogField(record, "description", "Description") ?? ""),
+    image: images[0] || "",
+    gallery: images.slice(1),
+    video: String(readCatalogField(record, "videoUrl", "Video Link", "videoLink", "video") ?? ""),
+    localVideo: String(readCatalogField(record, "localVideo") ?? ""),
+    tag,
+    color: background,
+    price: Number(firstAvailable.price ?? 0),
+    mrp: Number(firstAvailable.mrp ?? 0),
+    rating,
+    reviews: Number(firstAvailable.reviews ?? 0),
+    variants,
+    stock: variants.reduce((sum, variant) => sum + variant.inventory, 0)
+  };
+}
+
+const products = rawCatalogProducts.map(normalizeProduct).filter(product => product.image || product.variants.length);
+
+function getVariantForSize(product, size) {
+  if (!product) return null;
+  return (product.variants || []).find(variant => variant.size === String(size || "")) || null;
+}
+function getVariantInventory(product, size) {
+  const variant = getVariantForSize(product, size);
+  return variant ? variant.inventory : 0;
+}
+function getProductInventory(product) {
+  return (product?.variants || []).reduce((sum, variant) => sum + toInventory(variant.inventory), 0);
+}
+function getAvailableVariantCount(product) {
+  return (product?.variants || []).filter(variant => variant.inventory > 0).length;
+}
+function getCartVariantCount(productId, size, excludeUnitIndex = null) {
+  let count = 0;
+  Object.entries(cart || {}).forEach(([id, quantity]) => {
+    if (Number(id) !== Number(productId)) return;
+    const sizes = Array.isArray(cartUnitSizes[id]) ? cartUnitSizes[id] : [];
+    for (let i = 0; i < Number(quantity || 0); i += 1) {
+      if (excludeUnitIndex !== null && i === excludeUnitIndex) continue;
+      if (String(sizes[i] || "") === String(size || "")) count += 1;
+    }
+  });
+  return count;
+}
+function getCartProductCount(productId) {
+  return Number(cart[productId] || 0);
+}
+function getProductGroups() {
+  const groups = new Map();
+  products.forEach(product => {
+    const key = String(product.groupCode || product.id);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(product);
+  });
+  return [...groups.entries()].map(([groupCode, groupVariants]) => ({ groupCode, groupVariants }));
+}
 
 
 const $ = (selector) => document.querySelector(selector);
@@ -126,10 +296,13 @@ function renderCategories() {
 }
 
 function getVisibleProducts() {
+  // Show every catalog/color record separately in Shop Catalogs.
+  // Group Code is still used inside the detail popup for switching colors,
+  // but it no longer hides sibling colors from the listing.
   const query = searchInput.value.trim().toLowerCase();
-  let visible = products.filter(p => {
-    const matchesQuery = `${p.name} ${p.category} ${p.description}`.toLowerCase().includes(query);
-    const matchesCategory = categoryFilter.value === "all" || p.category === categoryFilter.value;
+  const visible = products.filter(product => {
+    const matchesQuery = `${product.name} ${product.shortName} ${product.category} ${product.description} ${product.displayColor} ${product.baseSku}`.toLowerCase().includes(query);
+    const matchesCategory = categoryFilter.value === "all" || product.category === categoryFilter.value;
     return matchesQuery && matchesCategory;
   });
   if (sortSelect.value === "low") visible.sort((a,b) => a.price - b.price);
@@ -142,7 +315,7 @@ function renderProducts() {
   const visible = getVisibleProducts();
   productGrid.replaceChildren();
   $("#emptyProducts").hidden = visible.length !== 0;
-  $("#productSummary").textContent = `${visible.length} product${visible.length === 1 ? "" : "s"} to explore`;
+  $("#productSummary").textContent = `${visible.length} catalog${visible.length === 1 ? "" : "s"} to explore`;
   visible.forEach(product => {
     const card = document.createElement("article");
     card.className = "product-card compact-product-card";
@@ -166,10 +339,10 @@ function renderProducts() {
       <div class="product-info compact-product-info">
         <span class="product-category">${escapeHtml(product.category)}</span>
         <h3>${escapeHtml(product.name)}</h3>
-        <div class="product-pricing compact-product-pricing" aria-label="Price ${catalogMoney(product.price)}, MRP ${catalogMoney(product.mrp || 1499)}, ${Math.round((1 - product.price / (product.mrp || 1499)) * 100)} percent off">
+        <div class="product-pricing compact-product-pricing" aria-label="Price ${catalogMoney(product.price)}, MRP ${catalogMoney(product.mrp || product.price)}, ${product.mrp > product.price ? Math.round((1 - product.price / product.mrp) * 100) : 0} percent off">
           <strong class="price">${catalogMoney(product.price)}</strong>
-          <span class="mrp-label">MRP <del>${catalogMoney(product.mrp || 1499)}</del></span>
-          <span class="discount-badge">${Math.round((1 - product.price / (product.mrp || 1499)) * 100)}% OFF</span>
+          <span class="mrp-label">MRP <del>${catalogMoney(product.mrp || product.price)}</del></span>
+          ${product.mrp > product.price ? `<span class="discount-badge">${Math.round((1 - product.price / product.mrp) * 100)}% OFF</span>` : ""}
         </div>
         <button class="view-catalog-button" type="button" data-view-catalog="${product.id}">View Catalog <span aria-hidden="true">↗</span></button>
       </div>`;
@@ -232,6 +405,17 @@ function addToCart(id, selectedSize = "") {
     showToast("This catalog could not be added. Please refresh the page.");
     return;
   }
+  if (selectedSize) {
+    const available = getVariantInventory(product, selectedSize);
+    const alreadyInCart = getCartVariantCount(id, selectedSize);
+    if (available <= alreadyInCart) {
+      showToast(available <= 0 ? `${product.displayColor} / ${selectedSize}: Out of Stock.` : `Only ${available} unit(s) available for size ${selectedSize}.`);
+      return;
+    }
+  } else if (getCartProductCount(id) >= getProductInventory(product)) {
+    showToast(`${product.name}: Out of Stock.`);
+    return;
+  }
   if (!Array.isArray(cartUnitSizes[id])) cartUnitSizes[id] = [];
   cart[id] = (cart[id] || 0) + 1;
   cartUnitSizes[id].push(selectedSize || "");
@@ -244,6 +428,15 @@ function addToCart(id, selectedSize = "") {
 function buyNow(id, selectedSize = "", quantity = 1) {
   // Buy Now starts checkout with the selected catalog only.
   const count = Math.max(1, Math.min(10, Number(quantity) || 1));
+  const product = products.find(item => item.id === Number(id));
+  if (!product || getProductInventory(product) <= 0) {
+    showToast("This catalog is Out of Stock.");
+    return;
+  }
+  if (selectedSize && count > getVariantInventory(product, selectedSize)) {
+    showToast(`Only ${getVariantInventory(product, selectedSize)} unit(s) available for size ${selectedSize}.`);
+    return;
+  }
   cart = { [id]: count };
   Object.keys(cartUnitSizes).forEach(key => delete cartUnitSizes[key]);
   cartUnitSizes[id] = Array.from({ length: count }, () => selectedSize || "");
@@ -351,7 +544,10 @@ function renderCart() {
   const previousScrollTop = cartItems.scrollTop;
   const units = getCartUnits();
   const count = units.length;
-  const total = units.reduce((sum, unit) => sum + unit.product.price, 0);
+  const total = units.reduce((sum, unit) => {
+    const variant = getVariantForSize(unit.product, unit.size);
+    return sum + Number(variant?.price ?? unit.product.price ?? 0);
+  }, 0);
 
   $("#cartCount").textContent = count;
   $("#drawerCount").textContent = `(${count})`;
@@ -386,17 +582,17 @@ function renderCart() {
       <div class="cart-thumb"><img src="${product.image}" alt="${escapeHtml(product.name)}"></div>
       <div class="cart-product-details">
         <h4>${escapeHtml(product.name)}</h4>
-        <div class="unit-price">${money(product.price)} / item</div>
+        <div class="unit-price">${money(Number(getVariantForSize(product, size)?.price ?? product.price))} / item</div>
         <div class="cart-size-picker" role="group" aria-label="Choose size for item ${unitIndex + 1}: ${escapeHtml(product.name)}">
           <span class="cart-size-label">Size:</span>
-          ${["S","M","L","XL","XXL","3XL"].map(itemSize => `<button type="button" class="size-button cart-size-button ${size === itemSize ? "selected" : ""}" data-unit-size="${itemSize}" data-product-id="${product.id}" data-unit-index="${unitIndex}" aria-pressed="${size === itemSize ? "true" : "false"}">${itemSize}</button>`).join("")}
+          ${(product.variants || []).map(variant => `<button type="button" class="size-button cart-size-button ${size === variant.size ? "selected" : ""}" data-unit-size="${escapeHtml(variant.size)}" data-product-id="${product.id}" data-unit-index="${unitIndex}" aria-pressed="${size === variant.size ? "true" : "false"}" ${variant.inventory <= 0 ? 'disabled title="Out of Stock"' : ""}>${escapeHtml(variant.size)}${variant.inventory <= 0 ? " · Out of Stock" : ""}</button>`).join("")}
         </div>
         <div class="quantity-controls cart-unit-controls">
           <button type="button" class="cart-add-one" data-add-unit="${product.id}" aria-label="Add one more ${escapeHtml(product.name)}">＋ Add one</button>
           <button type="button" class="remove-button" data-remove-unit="${product.id}" data-unit-index="${unitIndex}">Remove item</button>
         </div>
       </div>
-      <div class="line-price">${money(product.price)}</div>`;
+      <div class="line-price">${money(Number(getVariantForSize(product, size)?.price ?? product.price))}</div>`;
     cartItems.appendChild(row);
   });
   cartItems.scrollTop = previousScrollTop;
@@ -517,24 +713,38 @@ async function sendWhatsAppOrder() {
     showToast("Please enter a valid 10-digit mobile number");
     return;
   }
+  const customerEmail = $("#customerEmail") ? $("#customerEmail").value.trim() : "";
+  if (customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+    $("#customerEmail").focus();
+    showToast("Please enter a valid email address or leave it blank.");
+    return;
+  }
   if (!GOOGLE_SCRIPT_URL.startsWith("https://script.google.com/macros/s/") ||
       GOOGLE_SCRIPT_URL.includes("PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE")) {
     showToast("Order system not connected. Add your Apps Script Web App URL in script.js.");
     return;
   }
 
-  const total = entries.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const orderItems = entries.map(({product, quantity, size}) => ({
-    productName: product.name,
-    productId: product.id,
-    size: size || "",
-    quantity,
-    unitPrice: product.price,
-    lineTotal: product.price * quantity
-  }));
+  const orderItems = entries.map(({product, quantity, size}) => {
+    const variant = getVariantForSize(product, size);
+    const unitPrice = Number(variant?.price ?? product.price ?? 0);
+    return {
+      productName: product.name,
+      productId: product.id,
+      groupCode: product.groupCode,
+      sku: variant?.sku || (product.baseSku && size ? `${product.baseSku}_${size}` : product.baseSku),
+      color: product.displayColor,
+      size: size || "",
+      quantity,
+      unitPrice,
+      lineTotal: unitPrice * quantity
+    };
+  });
+  const total = orderItems.reduce((sum, item) => sum + item.lineTotal, 0);
   const payload = new URLSearchParams({
     store: "KAILU CREATION™",
     customerName: name,
+    email: customerEmail,
     mobileNumber,
     size: orderItems.map(item => `${item.size}`).join(";"),
     // size: orderItems.map(item => `${item.productName}: ${item.size}`).join("; "),
@@ -569,7 +779,7 @@ async function sendWhatsAppOrder() {
     Object.keys(cartUnitSizes).forEach(id => delete cartUnitSizes[id]);
     renderCart();
     closeCart({ skipHistory: true });
-    ["customerName", "mobileNumber", "houseBuilding", "landmark", "roadArea", "pincode", "city", "state"].forEach(id => {
+    ["customerName", "customerEmail", "mobileNumber", "houseBuilding", "landmark", "roadArea", "pincode", "city", "state"].forEach(id => {
       const field = $("#" + id);
       if (field) field.value = "";
     });
@@ -634,17 +844,111 @@ const detailProductVideo = $("#detailProductVideo");
 
 function updateDetailSku() {
   if (!activeCatalogProduct) return;
-  const sku = activeCatalogProduct.sku || `KC-${String(activeCatalogProduct.id).padStart(3, "0")}`;
-  $("#detailProductSku").textContent = `SKU: ${sku}${selectedCatalogSize ? `_${selectedCatalogSize}` : ""}`;
+  const selectedVariant = getVariantForSize(activeCatalogProduct, selectedCatalogSize);
+  const sku = selectedVariant?.sku || (activeCatalogProduct.baseSku && selectedCatalogSize
+    ? `${activeCatalogProduct.baseSku}_${selectedCatalogSize}`
+    : activeCatalogProduct.baseSku || `KC-${String(activeCatalogProduct.id).padStart(3, "0")}`);
+  $("#detailProductSku").textContent = `SKU: ${sku}`;
+}
+
+function updateDetailPricing() {
+  if (!activeCatalogProduct) return;
+  const variant = getVariantForSize(activeCatalogProduct, selectedCatalogSize) ||
+    (activeCatalogProduct.variants || []).find(item => item.inventory > 0) ||
+    (activeCatalogProduct.variants || [])[0] || {};
+  const price = Number(variant.price ?? activeCatalogProduct.price ?? 0);
+  const mrp = Number(variant.mrp ?? activeCatalogProduct.mrp ?? price);
+  const discount = mrp > price ? Math.round((1 - price / mrp) * 100) : 0;
+  $("#detailProductPricing").innerHTML = `<strong>${catalogMoney(price)}</strong><span class="detail-mrp">MRP <del>${catalogMoney(mrp)}</del></span>${discount ? `<span class="detail-discount">${discount}% OFF</span>` : ""}`;
 }
 
 function updateCatalogSizeOptions() {
-  $("#detailSizeOptions").querySelectorAll("[data-detail-size]").forEach(button => {
-    const active = button.dataset.detailSize === selectedCatalogSize;
-    button.classList.toggle("selected", active);
+  const options = $("#detailSizeOptions");
+  if (!options || !activeCatalogProduct) return;
+  options.replaceChildren();
+  (activeCatalogProduct.variants || []).forEach(variant => {
+    const button = document.createElement("button");
+    const active = variant.size === selectedCatalogSize;
+    button.type = "button";
+    button.className = `size-button ${active ? "selected" : ""} ${variant.inventory <= 0 ? "size-out-of-stock" : ""}`;
+    button.dataset.detailSize = variant.size;
     button.setAttribute("aria-pressed", active ? "true" : "false");
+    button.disabled = variant.inventory <= 0;
+    button.title = variant.inventory <= 0 ? "Out of Stock" : `${variant.inventory} available`;
+    button.textContent = variant.inventory <= 0 ? `${variant.size} · Out of Stock` : variant.size;
+    options.appendChild(button);
   });
+  updateDetailStock();
   updateDetailSku();
+  updateDetailPricing();
+}
+
+function updateDetailStock() {
+  if (!activeCatalogProduct) return;
+  const stockLine = $("#detailProductStock");
+  const totalStock = getProductInventory(activeCatalogProduct);
+  if (totalStock <= 0) {
+    stockLine.textContent = "Out of Stock";
+    stockLine.classList.add("stock-out");
+    return;
+  }
+  if (selectedCatalogSize) {
+    const stock = getVariantInventory(activeCatalogProduct, selectedCatalogSize);
+    stockLine.textContent = stock > 0 ? `In Stock · ${stock.toLocaleString("en-IN")} available for size ${selectedCatalogSize}` : `Out of Stock · Size ${selectedCatalogSize}`;
+    stockLine.classList.toggle("stock-out", stock <= 0);
+    return;
+  }
+  stockLine.textContent = `In Stock · ${getAvailableVariantCount(activeCatalogProduct)} size(s) available`;
+  stockLine.classList.remove("stock-out");
+}
+
+function renderColorOptions() {
+  const options = $("#detailColorOptions");
+  if (!options || !activeCatalogProduct) return;
+  const groupVariants = products.filter(product => String(product.groupCode) === String(activeCatalogProduct.groupCode));
+  options.replaceChildren();
+  groupVariants.forEach(variant => {
+    const available = getProductInventory(variant) > 0;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `detail-color-button ${variant.id === activeCatalogProduct.id ? "selected" : ""} ${available ? "" : "out-of-stock"}`;
+    button.dataset.detailColorId = String(variant.id);
+    button.textContent = available ? variant.displayColor : `${variant.displayColor} · Out of Stock`;
+    button.disabled = !available;
+    button.setAttribute("aria-pressed", variant.id === activeCatalogProduct.id ? "true" : "false");
+    options.appendChild(button);
+  });
+  const selectedColor = $("#detailProductColor");
+  if (selectedColor) selectedColor.textContent = activeCatalogProduct.displayColor || "As shown in photos";
+}
+
+function setActiveCatalogProduct(product) {
+  if (!product) return;
+  activeCatalogProduct = product;
+  selectedCatalogSize = "";
+  clearCatalogSizeWarning();
+  $("#detailProductCategory").textContent = product.category;
+  $("#detailProductName").textContent = product.name;
+  $("#detailProductRating").innerHTML = `<span aria-hidden="true">★</span> <strong>${Number(product.rating).toFixed(1)}</strong> <span>(${Number(product.reviews).toLocaleString("en-IN")} reviews)</span>`;
+  const price = Number(product.price || 0);
+  const mrp = Number(product.mrp || price);
+  const discount = mrp > price ? Math.round((1 - price / mrp) * 100) : 0;
+  $("#detailProductPricing").innerHTML = `<strong>${catalogMoney(price)}</strong><span class="detail-mrp">MRP <del>${catalogMoney(mrp)}</del></span>${discount ? `<span class="detail-discount">${discount}% OFF</span>` : ""}`;
+  $("#detailProductFabric").textContent = product.fabric || "As shown in product details";
+  $("#detailProductDescription").textContent = product.description || "Please view the product photos for design details.";
+  $("#detailQuantity").textContent = "1";
+  catalogQuantity = 1;
+  renderColorOptions();
+  updateCatalogSizeOptions();
+
+  activeCatalogMedia = [product.image, ...(product.gallery || [])]
+    .filter(Boolean)
+    .map((src, i) => ({ type: "photo", src, alt: `${product.name} photo ${i + 1}` }));
+  if (product.video) activeCatalogMedia.push({ type: "video", src: product.video, alt: `${product.name} video` });
+  activeCatalogMediaIndex = 0;
+  detailGalleryDots.innerHTML = activeCatalogMedia.map((item, i) => `
+    <button type="button" class="detail-gallery-dot ${i === 0 ? "active" : ""}" data-detail-gallery-index="${i}" aria-label="${item.type === "video" ? "Show product video" : `Show photo ${i + 1}`}" ${i === 0 ? 'aria-current="true"' : ""}>${item.type === "video" ? "▶" : ""}</button>`).join("");
+  updateDetailGallery(0);
 }
 
 function clearCatalogSizeWarning() {
@@ -655,7 +959,12 @@ function clearCatalogSizeWarning() {
 }
 
 function requireCatalogSize() {
-  if (selectedCatalogSize) return true;
+  if (activeCatalogProduct && getProductInventory(activeCatalogProduct) <= 0) {
+    showToast("This color is Out of Stock.");
+    updateDetailStock();
+    return false;
+  }
+  if (selectedCatalogSize && getVariantInventory(activeCatalogProduct, selectedCatalogSize) > 0) return true;
   const section = document.querySelector(".detail-size-section");
   const error = $("#detailSizeError");
   if (section) section.classList.add("size-selection-required");
@@ -674,7 +983,12 @@ if (detailSizeOptions) {
   detailSizeOptions.addEventListener("click", event => {
     const sizeButton = event.target instanceof Element ? event.target.closest("[data-detail-size]") : null;
     if (!sizeButton || !detailSizeOptions.contains(sizeButton)) return;
-    selectedCatalogSize = sizeButton.dataset.detailSize || "";
+    const nextSize = sizeButton.dataset.detailSize || "";
+    if (getVariantInventory(activeCatalogProduct, nextSize) <= 0) {
+      showToast(`Size ${nextSize}: Out of Stock.`);
+      return;
+    }
+    selectedCatalogSize = nextSize;
     clearCatalogSizeWarning();
     updateCatalogSizeOptions();
   });
@@ -714,28 +1028,7 @@ function updateDetailGallery(index = activeCatalogMediaIndex) {
 function openCatalogDetails(id) {
   const product = products.find(item => item.id === Number(id));
   if (!product || !catalogDetailsModal) return;
-  activeCatalogProduct = product;
-  selectedCatalogSize = "";
-  catalogQuantity = 1;
-  clearCatalogSizeWarning();
-  $("#detailProductCategory").textContent = product.category;
-  $("#detailProductName").textContent = product.name;
-  $("#detailProductRating").innerHTML = `<span aria-hidden="true">★</span> <strong>${Number(product.rating).toFixed(1)}</strong> <span>(${Number(product.reviews).toLocaleString("en-IN")} reviews)</span>`;
-  $("#detailProductPricing").innerHTML = `<strong>${catalogMoney(product.price)}</strong><span class="detail-mrp">MRP <del>${catalogMoney(product.mrp || 1499)}</del></span><span class="detail-discount">${Math.round((1 - product.price / (product.mrp || 1499)) * 100)}% OFF</span>`;
-  $("#detailProductStock").textContent = `In Stock · ${Number(product.stock || 99).toLocaleString("en-IN")} available`;
-  $("#detailProductColor").textContent = product.displayColor || "As shown in photos";
-  $("#detailProductFabric").textContent = product.fabric || "As shown in product details";
-  $("#detailProductDescription").textContent = product.description || "Please view the product photos for design details.";
-  $("#detailProductSku").textContent = `SKU: ${product.sku || `KC-${String(product.id).padStart(3, "0")}`}`;
-  $("#detailQuantity").textContent = "1";
-  updateCatalogSizeOptions();
-  activeCatalogMedia = [product.image, ...(product.gallery || [])]
-    .filter(Boolean)
-    .map((src, i) => ({ type: "photo", src, alt: `${product.name} photo ${i + 1}` }));
-  if (product.video) activeCatalogMedia.push({ type: "video", src: product.video, alt: `${product.name} video` });
-  detailGalleryDots.innerHTML = activeCatalogMedia.map((item, i) => `
-    <button type="button" class="detail-gallery-dot ${i === 0 ? "active" : ""}" data-detail-gallery-index="${i}" aria-label="${item.type === "video" ? "Show product video" : `Show photo ${i + 1}`}" ${i === 0 ? 'aria-current="true"' : ""}>${item.type === "video" ? "▶" : ""}</button>`).join("");
-  updateDetailGallery(0);
+  setActiveCatalogProduct(product);
   catalogDetailsModal.hidden = false;
   document.body.classList.add("catalog-details-open");
   $("#closeCatalogDetails").focus();
@@ -758,6 +1051,12 @@ catalogDetailsModal.addEventListener("click", event => {
     closeCatalogDetails();
     return;
   }
+  const colorButton = target && target.closest("[data-detail-color-id]");
+  if (colorButton) {
+    const nextProduct = products.find(product => product.id === Number(colorButton.dataset.detailColorId));
+    if (nextProduct && getProductInventory(nextProduct) > 0) setActiveCatalogProduct(nextProduct);
+    return;
+  }
   const galleryDot = target && target.closest("[data-detail-gallery-index]");
   if (galleryDot) {
     updateDetailGallery(Number(galleryDot.dataset.detailGalleryIndex));
@@ -777,6 +1076,12 @@ catalogDetailsModal.addEventListener("click", event => {
   const addButton = target && target.closest("[data-detail-add]");
   if (addButton) {
     if (!activeCatalogProduct || !requireCatalogSize()) return;
+    const alreadyInCart = getCartVariantCount(activeCatalogProduct.id, selectedCatalogSize);
+    const available = getVariantInventory(activeCatalogProduct, selectedCatalogSize);
+    if (alreadyInCart + catalogQuantity > available) {
+      showToast(`Only ${Math.max(0, available - alreadyInCart)} more unit(s) available for size ${selectedCatalogSize}.`);
+      return;
+    }
     for (let i = 0; i < catalogQuantity; i += 1) addToCart(activeCatalogProduct.id, selectedCatalogSize);
     closeCatalogDetails();
     return;
@@ -1031,8 +1336,14 @@ productGrid.addEventListener("keydown", event => {
 
 productGrid.addEventListener("click", event => {
   const target = event.target instanceof Element ? event.target : event.target.parentElement;
+  const colorChoice = target && target.closest("[data-view-color-id]");
   const viewButton = target && target.closest("[data-view-catalog]");
   const addButton = target && target.closest("[data-add]");
+  if (colorChoice) {
+    event.preventDefault();
+    openCatalogDetails(Number(colorChoice.dataset.viewColorId));
+    return;
+  }
   const buyButton = target && target.closest("[data-buy]");
   if (viewButton) {
     event.preventDefault();
@@ -1159,7 +1470,15 @@ cartItems.addEventListener("click", event => {
     const productId = Number(button.dataset.productId);
     const unitIndex = Number(button.dataset.unitIndex);
     if (!Array.isArray(cartUnitSizes[productId])) cartUnitSizes[productId] = [];
-    cartUnitSizes[productId][unitIndex] = button.dataset.unitSize;
+    const selectedSize = button.dataset.unitSize;
+    const product = products.find(item => item.id === productId);
+    const available = getVariantInventory(product, selectedSize);
+    const alreadySelected = getCartVariantCount(productId, selectedSize, unitIndex);
+    if (available <= alreadySelected) {
+      showToast(available <= 0 ? `Size ${selectedSize}: Out of Stock.` : `Only ${available} unit(s) available for size ${selectedSize}.`);
+      return;
+    }
+    cartUnitSizes[productId][unitIndex] = selectedSize;
     const keepScroll = cartItems.scrollTop;
     renderCart();
     cartItems.scrollTop = keepScroll;
