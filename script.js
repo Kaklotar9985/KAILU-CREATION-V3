@@ -1335,11 +1335,23 @@ function updateDetailGallery(index = activeCatalogMediaIndex) {
 function openCatalogDetails(id, options = {}) {
   const product = products.find(item => item.id === Number(id) || String(item.catalogId) === String(id));
   if (!product || !catalogDetailsModal) return;
+  const wasHidden = catalogDetailsModal.hidden;
   setActiveCatalogProduct(product);
   catalogDetailsModal.hidden = false;
   document.body.classList.add("catalog-details-open");
-  if (options.trackHistory && !(history.state && history.state.kailuUI === "shared-catalog")) {
-    history.pushState({ ...(history.state || {}), kailuUI: "shared-catalog", catalogId: catalogWishlistKey(product) }, "", window.location.href);
+
+  // Always create an in-app history entry when opening a product detail.
+  // Without this, mobile browser Back exits the website because ordinary catalog
+  // cards previously opened the modal without setting a history state.
+  if (wasHidden && !(history.state && history.state.kailuUI === "shared-catalog")) {
+    history.pushState(
+      { ...(history.state && typeof history.state === "object" ? history.state : {}),
+        kailuUI: "shared-catalog",
+        catalogId: catalogWishlistKey(product),
+        kailuUiToken: Date.now() },
+      "",
+      window.location.href
+    );
   }
   $("#closeCatalogDetails").focus();
 }
