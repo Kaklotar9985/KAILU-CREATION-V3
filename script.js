@@ -11,7 +11,31 @@ const PHOTO_FALLBACK = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="900" viewBox="0 0 800 900"><rect width="800" height="900" fill="#f5f1e9"/><g fill="none" stroke="#b9c5bc" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><rect x="285" y="320" width="230" height="185" rx="18"/><circle cx="355" cy="375" r="22"/><path d="M300 475l65-65 54 48 38-35 43 52"/></g><text x="400" y="570" text-anchor="middle" font-family="Arial,sans-serif" font-size="25" fill="#315448">KAILU CREATION</text><text x="400" y="610" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" fill="#78877d">Photo unavailable</text></svg>'
 )}`;
 const imageAvailabilityCache = new Map();
+const videoAvailabilityCache = new Map();
 let detailMediaLoadToken = 0;
+
+// Check bundled/same-origin videos before exposing a player. External video URLs
+// are left to the media element's error handler to avoid false negatives from CORS.
+function isVideoAvailable(src) {
+  if (!src) return Promise.resolve(false);
+  if (videoAvailabilityCache.has(src)) return videoAvailabilityCache.get(src);
+  const result = (async () => {
+    try {
+      const url = new URL(src, document.baseURI);
+      if (url.origin !== window.location.origin) return true;
+      const response = await fetch(url.href, { method: "HEAD", cache: "no-store" });
+      // Some desktop browsers / static hosting layers can reject HEAD even when
+      // the actual MP4 is playable. Only treat explicit missing-file statuses
+      // as unavailable; the video element's own error handler validates playback.
+      return response.status !== 404 && response.status !== 410;
+    } catch {
+      // Don't incorrectly hide a valid video when a host blocks HEAD requests.
+      return true;
+    }
+  })();
+  videoAvailabilityCache.set(src, result);
+  return result;
+}
 
 // Cache both successful and failed image checks so invalid links are not retried repeatedly.
 function isImageAvailable(src) {
@@ -230,14 +254,7 @@ function normalizeProduct(record, index) {
     description: String(readCatalogField(record, "description", "Description") ?? ""),
     image: images[0] || "",
     gallery: images.slice(1),
-    // An explicitly present videoUrl is authoritative, including an empty value.
-    // This prevents an old/alternate "Video Link" field from showing a VIDEO
-    // button on catalogs where videoUrl is intentionally blank.
-    video: String(
-      Object.prototype.hasOwnProperty.call(record, "videoUrl")
-        ? (record.videoUrl ?? "")
-        : (readCatalogField(record, "Video Link", "videoLink", "video") ?? "")
-    ).trim(),
+    video: String(readCatalogField(record, "videoUrl", "Video Link", "videoLink", "video") ?? ""),
     localVideo: String(readCatalogField(record, "localVideo") ?? ""),
     tag,
     color: background,
@@ -473,7 +490,7 @@ function renderProducts() {
           </button>
         </div>
         <img class="catalog-photo" src="${product.image}" alt="${escapeHtml(product.name)}" role="button" tabindex="0" aria-label="Open full-size photo: ${escapeHtml(product.name)}" draggable="false">
-        <video class="catalog-video" data-main-video="${product.id}" controls muted preload="metadata" playsinline aria-label="${escapeHtml(product.name)} product video" hidden></video>
+        <video class="catalog-video" data-main-video="${product.id}" controls preload="metadata" playsinline aria-label="${escapeHtml(product.name)} product video" hidden></video>
         <button class="gallery-next" type="button" aria-label="Next photo or video" data-gallery-next="${product.id}" hidden>›</button>
       </div>
       <div class="product-gallery" data-gallery="${product.id}">
@@ -538,17 +555,28 @@ function renderProducts() {
       mainPhoto.src = PHOTO_FALLBACK;
       mainPhoto.alt = `${product.name} photo unavailable`;
     });
-    video.muted = true;
-    video.defaultMuted = true;
+    video.muted = false;
+    video.defaultMuted = false;
     video.preload = "none";
     video.playsInline = true;
+    videoDot.hidden = true;
     if (product.video) {
       video.dataset.videoSrc = product.video;
-      videoDot.hidden = false;
+      isVideoAvailable(product.video).then(available => {
+        if (!card.isConnected) return;
+        const usable = available && video.dataset.videoFailed !== "true";
+        videoDot.hidden = !usable;
+        if (!usable) delete video.dataset.videoSrc;
+        updateGalleryControls(card, product);
+      });
     } else {
-      videoDot.hidden = true;
+      delete video.dataset.videoSrc;
     }
     video.addEventListener("error", () => {
+      const failedVideoSrc = video.dataset.videoSrc || video.getAttribute("src") || "";
+      video.dataset.videoFailed = "true";
+      if (failedVideoSrc) videoAvailabilityCache.set(failedVideoSrc, Promise.resolve(false));
+      delete video.dataset.videoSrc;
       video.pause();
       video.hidden = true;
       mainPhoto.hidden = false;
@@ -1066,29 +1094,38 @@ detailProductImage.addEventListener("error", () => {
 });
 
 detailProductVideo.addEventListener("error", () => {
-  const failedSrc = detailProductVideo.getAttribute("src") || "";
-  if (!failedSrc || !activeCatalogProduct) return;
-  const failedIndex = activeCatalogMedia.findIndex(item => item.type === "video" && item.src === failedSrc);
+  const failedSrc = detailProductVideo.getAttribute("src") || detailProductVideo.currentSrc || "";
+  if (!failedSrc) return;
+  const normalizeUrl = value => {
+    try { return new URL(value, document.baseURI).href; } catch { return value; }
+  };
+  const failedIndex = activeCatalogMedia.findIndex(item =>
+    item.type === "video" && normalizeUrl(item.src) === normalizeUrl(failedSrc)
+  );
   if (failedIndex < 0) return;
+  videoAvailabilityCache.set(failedSrc, Promise.resolve(false));
+  const failedItemSrc = activeCatalogMedia[failedIndex]?.src;
+  if (failedItemSrc) videoAvailabilityCache.set(failedItemSrc, Promise.resolve(false));
 
+  activeCatalogMedia.splice(failedIndex, 1);
   detailProductVideo.pause();
   detailProductVideo.hidden = true;
   detailProductVideo.removeAttribute("src");
   detailProductVideo.load();
-  activeCatalogMedia.splice(failedIndex, 1);
-  activeCatalogMediaIndex = Math.max(0, Math.min(activeCatalogMediaIndex, activeCatalogMedia.length - 1));
-  renderDetailGalleryDots();
   if (activeCatalogMedia.length) {
+    activeCatalogMediaIndex = Math.min(failedIndex, activeCatalogMedia.length - 1);
+    renderDetailGalleryDots();
     updateDetailGallery(activeCatalogMediaIndex);
   } else {
     detailProductImage.dataset.currentImageSrc = PHOTO_FALLBACK;
     detailProductImage.src = PHOTO_FALLBACK;
-    detailProductImage.alt = `${activeCatalogProduct.name} photo unavailable`;
+    detailProductImage.alt = `${activeCatalogProduct?.name || "Product"} media unavailable`;
     detailProductImage.hidden = false;
+    activeCatalogMediaIndex = 0;
+    renderDetailGalleryDots();
     $("#detailGalleryPrev").hidden = true;
     $("#detailGalleryNext").hidden = true;
   }
-  showToast("This product video could not be loaded. Please try another catalog photo.");
 });
 
 function updateDetailSku() {
@@ -1193,6 +1230,17 @@ function setActiveCatalogProduct(product) {
 
   const candidatePhotos = [...new Set([product.image, ...(product.gallery || [])].filter(Boolean))];
   const candidateVideo = product.video ? { type: "video", src: product.video, alt: `${product.name} video` } : null;
+  const directVideoLink = $("#detailPlayVideo");
+  if (directVideoLink) {
+    if (candidateVideo) {
+      directVideoLink.href = new URL(candidateVideo.src, document.baseURI).href;
+      directVideoLink.hidden = false;
+      directVideoLink.setAttribute("aria-label", `Open ${product.name} video in the browser player`);
+    } else {
+      directVideoLink.removeAttribute("href");
+      directVideoLink.hidden = true;
+    }
+  }
 
   // Do not expose missing photo links in the detail carousel. Keep a clean placeholder
   // visible while checking, then render only the photos that actually load.
@@ -1210,12 +1258,15 @@ function setActiveCatalogProduct(product) {
   $("#detailGalleryPrev").hidden = true;
   $("#detailGalleryNext").hidden = true;
 
-  Promise.all(candidatePhotos.map(async (src, i) => ({
-    type: "photo", src, alt: `${product.name} photo ${i + 1}`, available: await isImageAvailable(src)
-  }))).then(photoResults => {
+  Promise.all([
+    Promise.all(candidatePhotos.map(async (src, i) => ({
+      type: "photo", src, alt: `${product.name} photo ${i + 1}`, available: await isImageAvailable(src)
+    }))),
+    candidateVideo ? isVideoAvailable(candidateVideo.src) : Promise.resolve(false)
+  ]).then(([photoResults, videoAvailable]) => {
     if (mediaLoadToken !== detailMediaLoadToken || activeCatalogProduct !== product) return;
     activeCatalogMedia = photoResults.filter(item => item.available).map(({ type, src, alt }) => ({ type, src, alt }));
-    if (candidateVideo) activeCatalogMedia.push(candidateVideo);
+    if (candidateVideo && videoAvailable) activeCatalogMedia.push(candidateVideo);
     activeCatalogMediaIndex = 0;
     renderDetailGalleryDots();
     if (activeCatalogMedia.length) {
@@ -1237,10 +1288,16 @@ function setActiveCatalogProduct(product) {
 
 function renderDetailGalleryDots() {
   if (!detailGalleryDots) return;
+  const hasVideo = activeCatalogMedia.some(item => item.type === "video");
+  const playVideoButton = $("#detailPlayVideo");
+  // This is a real link to the MP4, so desktop users can use the browser's native player
+  // even if embedded playback is blocked by a browser setting or extension.
+  if (playVideoButton) playVideoButton.hidden = !(activeCatalogProduct && activeCatalogProduct.video);
   detailGalleryDots.innerHTML = activeCatalogMedia.map((item, i) => {
     const isVideo = item.type === "video";
     const active = i === activeCatalogMediaIndex;
-    return `<button type="button" class="detail-gallery-dot${isVideo ? " detail-gallery-video-dot" : ""}${active ? " active" : ""}" data-detail-gallery-index="${i}" aria-label="${isVideo ? "Play product video" : `Show photo ${i + 1}`}" ${active ? 'aria-current="true"' : ""}>${isVideo ? "▶ VIDEO" : ""}</button>`;
+    const label = isVideo ? "Play product video" : `Show photo ${i + 1}`;
+    return `<button type="button" class="detail-gallery-dot${isVideo ? " detail-gallery-video-dot" : ""}${active ? " active" : ""}" data-detail-gallery-index="${i}" aria-label="${label}" title="${label}" ${active ? 'aria-current="true"' : ""}>${isVideo ? "▶ VIDEO" : ""}</button>`;
   }).join("");
 }
 
@@ -1294,22 +1351,25 @@ function updateDetailGallery(index = activeCatalogMediaIndex) {
   if (item.type === "video") {
     detailProductImage.hidden = true;
     detailProductVideo.hidden = false;
+    // A video-gallery selection is an explicit user action. Start playback here
+    // (the previous code loaded the file but never called play() in this popup).
+    // Keep sound enabled; if browser autoplay policy declines, native controls remain usable.
     detailProductVideo.controls = true;
-    detailProductVideo.muted = true;
-    detailProductVideo.defaultMuted = true;
+    detailProductVideo.muted = false;
+    detailProductVideo.defaultMuted = false;
     detailProductVideo.playsInline = true;
     detailProductVideo.preload = "auto";
-    if (detailProductVideo.getAttribute("src") !== item.src) {
+    const resolvedVideoSrc = new URL(item.src, document.baseURI).href;
+    if (detailProductVideo.src !== resolvedVideoSrc) {
       detailProductVideo.pause();
-      detailProductVideo.src = item.src;
+      detailProductVideo.src = resolvedVideoSrc;
       detailProductVideo.load();
     }
-    // When the shopper deliberately selects VIDEO, start playback silently.
-    // Native controls stay visible so sound can be enabled by the shopper.
-    const playAttempt = detailProductVideo.play();
-    if (playAttempt && typeof playAttempt.catch === "function") {
-      playAttempt.catch(() => {
-        // Autoplay can be blocked on some browsers; the native Play control remains available.
+    // Gallery-dot click is a direct user gesture; start playback from it.
+    const detailVideoPlayAttempt = detailProductVideo.play();
+    if (detailVideoPlayAttempt && typeof detailVideoPlayAttempt.catch === "function") {
+      detailVideoPlayAttempt.catch(() => {
+        // Autoplay with sound may be blocked by browser settings; leave native Play controls available.
       });
     }
   } else {
@@ -1368,6 +1428,12 @@ catalogDetailsModal.addEventListener("click", event => {
   if (colorButton) {
     const nextProduct = products.find(product => product.id === Number(colorButton.dataset.detailColorId));
     if (nextProduct && getProductInventory(nextProduct) > 0) setActiveCatalogProduct(nextProduct);
+    return;
+  }
+  const playVideoButton = target && target.closest("#detailPlayVideo");
+  if (playVideoButton) {
+    // Let the anchor's default target=_blank navigation open the MP4 in the native browser player.
+    // The VIDEO gallery dot remains the in-popup playback control.
     return;
   }
   const galleryDot = target && target.closest("[data-detail-gallery-index]");
@@ -1474,12 +1540,12 @@ function showLightboxItem(index) {
     video.hidden = false;
     video.pause();
     video.src = item.src;
-    video.muted = true;
-    video.defaultMuted = true;
+    video.muted = false;
+    video.defaultMuted = false;
     video.playsInline = true;
     // load() resets playback to the beginning when switching between gallery items.
     video.load();
-    // Video automatically starts silently when reached with Next/Previous.
+    // Attempt playback with sound; browser autoplay rules may require a Play tap.
     const playAttempt = video.play();
     if (playAttempt && typeof playAttempt.catch === "function") {
       playAttempt.catch(() => {
@@ -1488,13 +1554,36 @@ function showLightboxItem(index) {
     }
   } else {
     stopLightboxVideo();
-    video.muted = true;
-    video.defaultMuted = true;
+    video.muted = false;
+    video.defaultMuted = false;
     img.hidden = false;
     img.src = item.src;
     img.alt = item.alt || "Catalog full screen photo";
   }
 }
+
+const photoLightboxVideo = $("#photoLightboxVideo");
+photoLightboxVideo.addEventListener("error", () => {
+  const failedSrc = photoLightboxVideo.getAttribute("src") || photoLightboxVideo.currentSrc || "";
+  if (!failedSrc) return;
+  const normalizeUrl = value => {
+    try { return new URL(value, document.baseURI).href; } catch { return value; }
+  };
+  const failedIndex = lightboxItems.findIndex(item =>
+    item.type === "video" && normalizeUrl(item.src) === normalizeUrl(failedSrc)
+  );
+  if (failedIndex < 0) return;
+  videoAvailabilityCache.set(failedSrc, Promise.resolve(false));
+  const failedItemSrc = lightboxItems[failedIndex]?.src;
+  if (failedItemSrc) videoAvailabilityCache.set(failedItemSrc, Promise.resolve(false));
+  lightboxItems.splice(failedIndex, 1);
+  stopLightboxVideo();
+  if (lightboxItems.length) {
+    showLightboxItem(Math.min(failedIndex, lightboxItems.length - 1));
+  } else {
+    closePhotoLightbox();
+  }
+});
 
 function openPhotoLightbox(card, clickedSrc) {
   lightboxCard = card;
@@ -1590,8 +1679,8 @@ productGrid.addEventListener("click", event => {
     const video = card.querySelector("[data-main-video]");
     video.pause();
     video.currentTime = 0;
-    video.muted = true;
-    video.defaultMuted = true;
+    video.muted = false;
+    video.defaultMuted = false;
     video.hidden = true;
     main.hidden = false;
     main.dataset.currentSrc = photoButton.dataset.src;
@@ -1618,9 +1707,9 @@ productGrid.addEventListener("click", event => {
       video.preload = "auto";
       video.load();
     }
-    // Always start the product video muted; the visible speaker control can enable sound.
-    video.muted = true;
-    video.defaultMuted = true;
+    // Start with audio enabled when the customer chooses the video.
+    video.muted = false;
+    video.defaultMuted = false;
     card.querySelectorAll(".gallery-dot").forEach(dot => {
       const active = dot === videoButton;
       dot.classList.toggle("active", active);

@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="images/kailu-logo-mark-tm.webp">
   <meta property="og:title" content="KAILU CREATION™ | Your Style, Our Creation">
   <meta property="og:image" content="images/kailu-logo-transparent-tm.webp">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20261029-pc-video-v7">
 </head>
 <body>
   <div class="announcement-bar">
@@ -173,11 +173,12 @@
         <div class="detail-media-column">
           <div class="detail-media-stage">
             <img id="detailProductImage" src="" alt="Product photo" tabindex="0" role="button" aria-label="Open product photo full screen; click to zoom">
-            <video id="detailProductVideo" controls muted playsinline preload="metadata" hidden aria-label="Product video"></video>
+            <video id="detailProductVideo" controls playsinline preload="none" hidden aria-label="Product video"></video>
             <button id="detailGalleryPrev" class="detail-gallery-nav detail-gallery-prev" type="button" data-detail-gallery-nav="-1" aria-label="Previous product photo">‹</button>
             <button id="detailGalleryNext" class="detail-gallery-nav detail-gallery-next" type="button" data-detail-gallery-nav="1" aria-label="Next product photo">›</button>
           </div>
           <div id="detailGalleryDots" class="detail-gallery-dots" aria-label="Product photo and video options"></div>
+          <a id="detailPlayVideo" class="detail-play-video" href="#" target="_blank" rel="noopener noreferrer" hidden aria-label="Open product video in the browser player" title="Opens the MP4 in a new tab using the browser video player">▶ Play Product Video</a>
         </div>
         <div class="detail-info-column">
           <span id="detailProductCategory" class="product-category">ETHNIC COLLECTION</span>
@@ -209,7 +210,7 @@
     <button id="closePhotoLightbox" class="photo-lightbox-close" type="button" aria-label="Close full screen viewer">×</button>
     <button id="photoLightboxPrev" class="photo-lightbox-nav photo-lightbox-prev" type="button" aria-label="Previous photo or video">‹</button>
     <img id="photoLightboxImage" src="" alt="Catalog full screen photo">
-    <video id="photoLightboxVideo" class="photo-lightbox-video" controls muted playsinline preload="none" hidden aria-label="Product video"></video>
+    <video id="photoLightboxVideo" class="photo-lightbox-video" controls playsinline preload="none" hidden aria-label="Product video"></video>
     <button id="photoLightboxNext" class="photo-lightbox-nav photo-lightbox-next" type="button" aria-label="Next photo or video">›</button>
     <div class="photo-lightbox-zoom-controls" aria-label="Photo zoom controls">
       <button id="photoLightboxZoomOut" type="button" aria-label="Zoom out" title="Zoom out">−</button>
@@ -218,8 +219,8 @@
     </div>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="pincode-serviceability.js"></script>
-  <script src="products-data.js?v=20261029-video-icon-fix"></script>
-  <script src="script.js?v=20261029-video-icon-fix"></script>
+  <script src="pincode-serviceability.js?v=20261029-pc-video-v7"></script>
+  <script src="products-data.js?v=20261029-pc-video-v7"></script>
+  <script src="script.js?v=20261029-pc-video-v7"></script>
 </body>
 </html>
