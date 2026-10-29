@@ -2443,3 +2443,123 @@ body.catalog-details-open{overflow:hidden!important}
   .catalog-icon-button { width:31px; height:31px; }
   .catalog-icon-button svg { width:17px; height:17px; }
 }
+
+/* Mobile catalog detail: larger photo, independently scrolling details, and a fixed action bar. */
+@media (max-width: 760px) {
+  .catalog-details-modal {
+    padding: 8px;
+    overflow: hidden;
+  }
+
+  .catalog-details-panel {
+    display: flex;
+    flex-direction: column;
+    width: calc(100vw - 16px);
+    height: calc(100dvh - 16px);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .catalog-details-layout {
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: clamp(300px, 60dvh, 620px) minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .detail-media-column {
+    height: auto;
+    min-height: 0;
+    padding: 16px 14px 8px;
+    gap: 6px;
+  }
+
+  .detail-media-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .detail-info-column {
+    height: 100%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 20px 20px calc(116px + env(safe-area-inset-bottom, 0px));
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Keep the two purchase buttons visible while only the product details scroll. */
+  .detail-product-actions {
+    position: fixed;
+    left: calc(8px + clamp(15px, 2.8vw, 20px));
+    right: calc(8px + clamp(15px, 2.8vw, 20px));
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    z-index: 1210;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px 0 0;
+    background: #fff;
+    border-top: 1px solid #edf0ec;
+    box-shadow: 0 -8px 18px rgba(18, 62, 50, 0.06);
+  }
+
+  .detail-product-actions button {
+    width: 100%;
+    min-width: 0;
+    min-height: 52px;
+    padding: 12px 8px;
+    font-size: 12px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .detail-info-column {
+    padding-right: 15px;
+    padding-left: 15px;
+  }
+
+  .detail-product-actions {
+    gap: 7px;
+  }
+
+  .detail-product-actions button {
+    min-height: 50px;
+    padding-right: 5px;
+    padding-left: 5px;
+    font-size: 11px !important;
+  }
+}
+
+/* The action bar is a sibling of the scrolling details column, so scrolling can never move it. */
+.catalog-details-panel > .catalog-details-layout > .detail-product-actions {
+  position: absolute;
+  left: calc(50% + clamp(24px, 3vw, 52px));
+  right: clamp(24px, 3vw, 52px);
+  bottom: 20px;
+  z-index: 4;
+  padding: 10px 0 0;
+  background: #fff;
+  border-top: 1px solid #edf0ec;
+  box-shadow: 0 -8px 18px rgba(18, 62, 50, 0.06);
+}
+
+.catalog-details-panel .detail-info-column {
+  padding-bottom: 100px;
+}
+
+@media (max-width: 760px) {
+  .catalog-details-panel > .catalog-details-layout > .detail-product-actions {
+    left: clamp(15px, 2.8vw, 20px);
+    right: clamp(15px, 2.8vw, 20px);
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .catalog-details-panel .detail-info-column {
+    padding-bottom: calc(116px + env(safe-area-inset-bottom, 0px));
+  }
+}
