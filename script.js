@@ -24,7 +24,10 @@ function isVideoAvailable(src) {
       const url = new URL(src, document.baseURI);
       if (url.origin !== window.location.origin) return true;
       const response = await fetch(url.href, { method: "HEAD", cache: "no-store" });
-      return response.ok;
+      // Some desktop browsers / static hosting layers can reject HEAD even when
+      // the actual MP4 is playable. Only treat explicit missing-file statuses
+      // as unavailable; the video element's own error handler validates playback.
+      return response.status !== 404 && response.status !== 410;
     } catch {
       // Don't incorrectly hide a valid video when a host blocks HEAD requests.
       return true;
@@ -1335,11 +1338,14 @@ function updateDetailGallery(index = activeCatalogMediaIndex) {
     detailProductVideo.muted = false;
     detailProductVideo.defaultMuted = false;
     detailProductVideo.playsInline = true;
-    if (detailProductVideo.getAttribute("src") !== item.src) {
+    detailProductVideo.preload = "auto";
+    const resolvedVideoSrc = new URL(item.src, document.baseURI).href;
+    if (detailProductVideo.src !== resolvedVideoSrc) {
       detailProductVideo.pause();
-      detailProductVideo.src = item.src;
+      detailProductVideo.src = resolvedVideoSrc;
       detailProductVideo.load();
     }
+    // Gallery-dot click is a direct user gesture; start playback from it.
     const detailVideoPlayAttempt = detailProductVideo.play();
     if (detailVideoPlayAttempt && typeof detailVideoPlayAttempt.catch === "function") {
       detailVideoPlayAttempt.catch(() => {
