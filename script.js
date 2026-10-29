@@ -1328,10 +1328,23 @@ function updateDetailGallery(index = activeCatalogMediaIndex) {
   if (item.type === "video") {
     detailProductImage.hidden = true;
     detailProductVideo.hidden = false;
+    // A video-gallery selection is an explicit user action. Start playback here
+    // (the previous code loaded the file but never called play() in this popup).
+    // Keep sound enabled; if browser autoplay policy declines, native controls remain usable.
+    detailProductVideo.controls = true;
+    detailProductVideo.muted = false;
+    detailProductVideo.defaultMuted = false;
+    detailProductVideo.playsInline = true;
     if (detailProductVideo.getAttribute("src") !== item.src) {
       detailProductVideo.pause();
       detailProductVideo.src = item.src;
       detailProductVideo.load();
+    }
+    const detailVideoPlayAttempt = detailProductVideo.play();
+    if (detailVideoPlayAttempt && typeof detailVideoPlayAttempt.catch === "function") {
+      detailVideoPlayAttempt.catch(() => {
+        // Autoplay with sound may be blocked by browser settings; leave native Play controls available.
+      });
     }
   } else {
     detailProductVideo.pause();
