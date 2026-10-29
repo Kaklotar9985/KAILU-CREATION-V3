@@ -224,6 +224,107 @@ function normalizeProduct(record, index) {
 
 const products = rawCatalogProducts.map(normalizeProduct).filter(product => product.image || product.variants.length);
 
+// Wishlisted catalog IDs are stored locally on this device/browser.
+const WISHLIST_STORAGE_KEY = "kailuCreationWishlistV1";
+let wishlistIds = new Set();
+let wishlistMode = false;
+try {
+  const savedWishlist = JSON.parse(localStorage.getItem(WISHLIST_STORAGE_KEY) || "[]");
+  if (Array.isArray(savedWishlist)) wishlistIds = new Set(savedWishlist.map(String));
+} catch (error) {
+  // Storage can be unavailable in private browsing; wishlist remains usable for this session.
+}
+
+function catalogWishlistKey(product) {
+  return String(product?.catalogId || product?.id || "");
+}
+
+function isCatalogWishlisted(product) {
+  return wishlistIds.has(catalogWishlistKey(product));
+}
+
+function persistWishlist() {
+  try {
+    localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify([...wishlistIds]));
+  } catch (error) {
+    // Keep the in-session selection even when persistent browser storage is blocked.
+  }
+}
+
+function updateWishlistShortcut() {
+  const shortcut = $("#wishlistShortcut");
+  const count = $("#wishlistCount");
+  if (count) count.textContent = String(wishlistIds.size);
+  if (shortcut) {
+    shortcut.classList.toggle("is-active", wishlistMode);
+    shortcut.setAttribute("aria-pressed", String(wishlistMode));
+    shortcut.title = wishlistMode ? "Show all catalogs" : "Show wishlist";
+    shortcut.setAttribute("aria-label", wishlistMode ? "Show all catalogs" : `Show wishlist, ${wishlistIds.size} saved`);
+  }
+}
+
+function buildCatalogShareUrl(product) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("catalog", catalogWishlistKey(product));
+  url.hash = "";
+  return url.toString();
+}
+
+async function shareCatalog(productId) {
+  const product = products.find(item => String(item.id) === String(productId) || String(item.catalogId) === String(productId));
+  if (!product) {
+    showToast("This catalog could not be found.");
+    return;
+  }
+  const url = buildCatalogShareUrl(product);
+  const shareData = {
+    title: `${product.name} | KAILU CREATION™`,
+    text: `View this ${product.displayColor || ""} catalog from KAILU CREATION™: ${product.name}`.trim(),
+    url
+  };
+  if (navigator.share) {
+    try {
+      await navigator.share(shareData);
+      return;
+    } catch (error) {
+      if (error && error.name === "AbortError") return;
+      // Fall back to copying the link if native sharing is unavailable or fails.
+    }
+  }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(url);
+    } else {
+      const field = document.createElement("textarea");
+      field.value = url;
+      field.setAttribute("readonly", "");
+      field.style.position = "fixed";
+      field.style.opacity = "0";
+      document.body.appendChild(field);
+      field.select();
+      const copied = document.execCommand("copy");
+      field.remove();
+      if (!copied) throw new Error("Clipboard copy failed");
+    }
+    showToast("Catalog link copied. Now send it to anyone.");
+  } catch (error) {
+    window.prompt("Copy this catalog link and send it:", url);
+  }
+}
+
+function toggleCatalogWishlist(productId) {
+  const product = products.find(item => String(item.id) === String(productId) || String(item.catalogId) === String(productId));
+  if (!product) return;
+  const key = catalogWishlistKey(product);
+  const wasSaved = wishlistIds.has(key);
+  if (wasSaved) wishlistIds.delete(key);
+  else wishlistIds.add(key);
+  persistWishlist();
+  updateWishlistShortcut();
+  renderProducts();
+  showToast(wasSaved ? "Removed from Wishlist." : "Added to Wishlist ♥");
+}
+
 function getVariantForSize(product, size) {
   if (!product) return null;
   return (product.variants || []).find(variant => variant.size === String(size || "")) || null;
@@ -303,7 +404,8 @@ function getVisibleProducts() {
   const visible = products.filter(product => {
     const matchesQuery = `${product.name} ${product.shortName} ${product.category} ${product.description} ${product.displayColor} ${product.baseSku}`.toLowerCase().includes(query);
     const matchesCategory = categoryFilter.value === "all" || product.category === categoryFilter.value;
-    return matchesQuery && matchesCategory;
+    const matchesWishlist = !wishlistMode || isCatalogWishlisted(product);
+    return matchesQuery && matchesCategory && matchesWishlist;
   });
   if (sortSelect.value === "low") visible.sort((a,b) => a.price - b.price);
   if (sortSelect.value === "high") visible.sort((a,b) => b.price - a.price);
@@ -315,13 +417,33 @@ function renderProducts() {
   const visible = getVisibleProducts();
   productGrid.replaceChildren();
   $("#emptyProducts").hidden = visible.length !== 0;
-  $("#productSummary").textContent = `${visible.length} catalog${visible.length === 1 ? "" : "s"} to explore`;
+  const emptyHeading = $("#emptyProducts").querySelector("h3");
+  const emptyText = $("#emptyProducts").querySelector("p");
+  if (wishlistMode && wishlistIds.size === 0) {
+    if (emptyHeading) emptyHeading.textContent = "Your wishlist is empty";
+    if (emptyText) emptyText.textContent = "Tap the heart icon on a catalog to save it here.";
+  } else {
+    if (emptyHeading) emptyHeading.textContent = "No products found";
+    if (emptyText) emptyText.textContent = wishlistMode ? "No saved catalogs match the current filters." : "Try another search or category.";
+  }
+  $("#productSummary").textContent = wishlistMode
+    ? `${visible.length} saved catalog${visible.length === 1 ? "" : "s"}`
+    : `${visible.length} catalog${visible.length === 1 ? "" : "s"} to explore`;
+  updateWishlistShortcut();
   visible.forEach(product => {
     const card = document.createElement("article");
     card.className = "product-card compact-product-card";
     card.innerHTML = `
       <div class="product-image" style="background:${product.color}">
         ${product.tag ? `<span class="product-tag">${escapeHtml(product.tag)}</span>` : ""}
+        <div class="catalog-card-actions" aria-label="Catalog actions">
+          <button class="catalog-icon-button share-catalog-button" type="button" data-share-catalog="${product.id}" aria-label="Share ${escapeHtml(product.name)} catalog link" title="Share catalog link">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.7 10.7 6.6-4.1M8.7 13.3l6.6 4.1"/></svg>
+          </button>
+          <button class="catalog-icon-button wishlist-catalog-button${isCatalogWishlisted(product) ? " is-wishlisted" : ""}" type="button" data-wishlist-catalog="${product.id}" aria-label="${isCatalogWishlisted(product) ? "Remove from" : "Add to"} wishlist: ${escapeHtml(product.name)}" aria-pressed="${isCatalogWishlisted(product) ? "true" : "false"}" title="${isCatalogWishlisted(product) ? "Remove from wishlist" : "Add to wishlist"}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg>
+          </button>
+        </div>
         <img class="catalog-photo" src="${product.image}" alt="${escapeHtml(product.name)}" role="button" tabindex="0" aria-label="Open full-size photo: ${escapeHtml(product.name)}" draggable="false">
         <video class="catalog-video" data-main-video="${product.id}" controls muted preload="metadata" playsinline aria-label="${escapeHtml(product.name)} product video" hidden></video>
         <button class="gallery-next" type="button" aria-label="Next photo or video" data-gallery-next="${product.id}" hidden>›</button>
@@ -1025,16 +1147,19 @@ function updateDetailGallery(index = activeCatalogMediaIndex) {
   $("#detailGalleryNext").hidden = activeCatalogMedia.length < 2;
 }
 
-function openCatalogDetails(id) {
-  const product = products.find(item => item.id === Number(id));
+function openCatalogDetails(id, options = {}) {
+  const product = products.find(item => item.id === Number(id) || String(item.catalogId) === String(id));
   if (!product || !catalogDetailsModal) return;
   setActiveCatalogProduct(product);
   catalogDetailsModal.hidden = false;
   document.body.classList.add("catalog-details-open");
+  if (options.trackHistory && !(history.state && history.state.kailuUI === "shared-catalog")) {
+    history.pushState({ ...(history.state || {}), kailuUI: "shared-catalog", catalogId: catalogWishlistKey(product) }, "", window.location.href);
+  }
   $("#closeCatalogDetails").focus();
 }
 
-function closeCatalogDetails() {
+function closeCatalogDetails(options = {}) {
   if (!catalogDetailsModal || catalogDetailsModal.hidden) return;
   catalogDetailsModal.hidden = true;
   document.body.classList.remove("catalog-details-open");
@@ -1043,6 +1168,9 @@ function closeCatalogDetails() {
   detailProductVideo.load();
   activeCatalogProduct = null;
   activeCatalogMedia = [];
+  if (!options.skipHistory && !options.fromPopstate && history.state && history.state.kailuUI === "shared-catalog") {
+    history.back();
+  }
 }
 
 catalogDetailsModal.addEventListener("click", event => {
@@ -1336,6 +1464,20 @@ productGrid.addEventListener("keydown", event => {
 
 productGrid.addEventListener("click", event => {
   const target = event.target instanceof Element ? event.target : event.target.parentElement;
+  const shareButton = target && target.closest("[data-share-catalog]");
+  if (shareButton) {
+    event.preventDefault();
+    event.stopPropagation();
+    shareCatalog(shareButton.dataset.shareCatalog);
+    return;
+  }
+  const wishlistButton = target && target.closest("[data-wishlist-catalog]");
+  if (wishlistButton) {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleCatalogWishlist(wishlistButton.dataset.wishlistCatalog);
+    return;
+  }
   const colorChoice = target && target.closest("[data-view-color-id]");
   const viewButton = target && target.closest("[data-view-catalog]");
   const addButton = target && target.closest("[data-add]");
@@ -1496,6 +1638,28 @@ $("#cartShortcut").addEventListener("click", () => {
   renderCart();
   openCart();
 });
+const wishlistShortcut = $("#wishlistShortcut");
+if (wishlistShortcut) {
+  wishlistShortcut.addEventListener("click", () => {
+    if (wishlistMode) {
+      wishlistMode = false;
+      updateWishlistShortcut();
+      renderProducts();
+      showToast("Showing all catalogs.");
+      return;
+    }
+    if (wishlistIds.size === 0) {
+      showToast("Your wishlist is empty. Tap a catalog heart to save it.");
+      return;
+    }
+    wishlistMode = true;
+    searchInput.value = "";
+    categoryFilter.value = "all";
+    updateWishlistShortcut();
+    renderProducts();
+    $("#products").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
 const proceedCheckout = $("#proceedCheckout");
 if (proceedCheckout) {
   proceedCheckout.addEventListener("click", () => {
@@ -1523,6 +1687,12 @@ window.addEventListener("popstate", () => {
     return;
   }
 
+  if (catalogDetailsModal && !catalogDetailsModal.hidden) {
+    closeCatalogDetails({ fromPopstate: true, skipHistory: true });
+    scrollToCatalogList();
+    return;
+  }
+
   const successModal = $("#orderSuccessModal");
   if (successModal && !successModal.hidden) {
     successModal.hidden = true;
@@ -1541,3 +1711,17 @@ window.addEventListener("popstate", () => {
 renderCategories();
 renderProducts();
 renderCart();
+
+// A shared catalog URL opens that exact catalog detail popup automatically.
+const requestedCatalogId = new URLSearchParams(window.location.search).get("catalog");
+if (requestedCatalogId) {
+  const linkedProduct = products.find(product => String(product.catalogId) === requestedCatalogId || String(product.id) === requestedCatalogId);
+  if (linkedProduct) {
+    window.setTimeout(() => {
+      $("#products").scrollIntoView({ behavior: "auto", block: "start" });
+      openCatalogDetails(linkedProduct.id, { trackHistory: true });
+    }, 0);
+  } else {
+    showToast("This catalog link is no longer available.");
+  }
+}
