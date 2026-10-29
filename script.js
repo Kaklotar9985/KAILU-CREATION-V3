@@ -6,6 +6,27 @@ const WHATSAPP_NUMBER = "918160621151"; // Optional WhatsApp fallback
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyIyoGbUmWSd3I164G45QWCnyz4FQcQiYgH5LMTnVYMg5DoH9dMh-6EljOoo4WqLmXSPw/exec";
 const CURRENCY = "INR";
 
+// Branded, local fallback for missing product-photo URLs (no broken-image icon).
+const PHOTO_FALLBACK = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="900" viewBox="0 0 800 900"><rect width="800" height="900" fill="#f5f1e9"/><g fill="none" stroke="#b9c5bc" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><rect x="285" y="320" width="230" height="185" rx="18"/><circle cx="355" cy="375" r="22"/><path d="M300 475l65-65 54 48 38-35 43 52"/></g><text x="400" y="570" text-anchor="middle" font-family="Arial,sans-serif" font-size="25" fill="#315448">KAILU CREATION</text><text x="400" y="610" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" fill="#78877d">Photo unavailable</text></svg>'
+)}`;
+const imageAvailabilityCache = new Map();
+let detailMediaLoadToken = 0;
+
+// Cache both successful and failed image checks so invalid links are not retried repeatedly.
+function isImageAvailable(src) {
+  if (!src) return Promise.resolve(false);
+  if (imageAvailabilityCache.has(src)) return imageAvailabilityCache.get(src);
+  const result = new Promise(resolve => {
+    const image = new Image();
+    image.addEventListener("load", () => resolve(true), { once: true });
+    image.addEventListener("error", () => resolve(false), { once: true });
+    image.src = src;
+  });
+  imageAvailabilityCache.set(src, result);
+  return result;
+}
+
 const PINCODE_DATA = window.KAILU_PINCODE_DATA || Object.create(null);
 
 function setPincodeFeedback(message, status = "info") {
@@ -483,6 +504,33 @@ function renderProducts() {
     const mainPhoto = card.querySelector(".catalog-photo");
     const video = card.querySelector("[data-main-video]");
     const videoDot = card.querySelector("[data-gallery-video]");
+    mainPhoto.dataset.currentSrc = product.image;
+    mainPhoto.addEventListener("error", async () => {
+      const failedSrc = mainPhoto.dataset.currentSrc || mainPhoto.getAttribute("src") || "";
+      if (!failedSrc || failedSrc === PHOTO_FALLBACK || mainPhoto.dataset.usingFallback === "true") return;
+      const candidates = [...card.querySelectorAll("[data-gallery-photo]")]
+        .map(dot => dot.dataset.src)
+        .filter(src => src && src !== failedSrc);
+      for (const candidate of candidates) {
+        if (await isImageAvailable(candidate)) {
+          mainPhoto.dataset.currentSrc = candidate;
+          mainPhoto.dataset.usingFallback = "false";
+          mainPhoto.src = candidate;
+          mainPhoto.alt = product.name;
+          card.querySelectorAll("[data-gallery-photo]").forEach(dot => {
+            const active = dot.dataset.src === candidate;
+            dot.classList.toggle("active", active);
+            if (active) dot.setAttribute("aria-current", "true");
+            else dot.removeAttribute("aria-current");
+          });
+          return;
+        }
+      }
+      mainPhoto.dataset.usingFallback = "true";
+      mainPhoto.dataset.currentSrc = PHOTO_FALLBACK;
+      mainPhoto.src = PHOTO_FALLBACK;
+      mainPhoto.alt = `${product.name} photo unavailable`;
+    });
     video.muted = true;
     video.defaultMuted = true;
     video.preload = "none";
@@ -514,6 +562,16 @@ function updateGalleryControls(card, product) {
   const gallery = card.querySelector(".product-gallery");
   gallery.hidden = photoThumbs.length <= 1 && !hasVideo;
 }
+
+// Catch rare image failures in cart thumbnails/lightbox too. The catalog and detail
+// images have dedicated handlers so they can try another valid product photo first.
+document.addEventListener("error", event => {
+  const image = event.target;
+  if (!(image instanceof HTMLImageElement) || image.src === PHOTO_FALLBACK) return;
+  if (image.classList.contains("catalog-photo") || image.id === "detailProductImage") return;
+  image.src = PHOTO_FALLBACK;
+  image.alt = image.alt || "Product photo unavailable";
+}, true);
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, char => ({
@@ -964,6 +1022,33 @@ const detailGalleryDots = $("#detailGalleryDots");
 const detailProductImage = $("#detailProductImage");
 const detailProductVideo = $("#detailProductVideo");
 
+detailProductImage.addEventListener("error", () => {
+  const failedSrc = detailProductImage.dataset.currentImageSrc || "";
+  if (!failedSrc || failedSrc === PHOTO_FALLBACK) return;
+  imageAvailabilityCache.set(failedSrc, Promise.resolve(false));
+  const failedIndex = activeCatalogMedia.findIndex(item => item.type === "photo" && item.src === failedSrc);
+  if (failedIndex < 0) return;
+  activeCatalogMedia.splice(failedIndex, 1);
+  if (failedIndex <= activeCatalogMediaIndex) {
+    activeCatalogMediaIndex = Math.min(failedIndex, Math.max(0, activeCatalogMedia.length - 1));
+  }
+  renderDetailGalleryDots();
+  if (activeCatalogMedia.length) {
+    updateDetailGallery(activeCatalogMediaIndex);
+    return;
+  }
+  detailProductVideo.pause();
+  detailProductVideo.hidden = true;
+  detailProductVideo.removeAttribute("src");
+  detailProductVideo.load();
+  detailProductImage.dataset.currentImageSrc = PHOTO_FALLBACK;
+  detailProductImage.src = PHOTO_FALLBACK;
+  detailProductImage.alt = `${activeCatalogProduct?.name || "Product"} photo unavailable`;
+  detailProductImage.hidden = false;
+  $("#detailGalleryPrev").hidden = true;
+  $("#detailGalleryNext").hidden = true;
+});
+
 function updateDetailSku() {
   if (!activeCatalogProduct) return;
   const selectedVariant = getVariantForSize(activeCatalogProduct, selectedCatalogSize);
@@ -1047,6 +1132,7 @@ function renderColorOptions() {
 function setActiveCatalogProduct(product) {
   if (!product) return;
   activeCatalogProduct = product;
+  const mediaLoadToken = ++detailMediaLoadToken;
   selectedCatalogSize = "";
   clearCatalogSizeWarning();
   $("#detailProductCategory").textContent = product.category;
@@ -1063,14 +1149,54 @@ function setActiveCatalogProduct(product) {
   renderColorOptions();
   updateCatalogSizeOptions();
 
-  activeCatalogMedia = [product.image, ...(product.gallery || [])]
-    .filter(Boolean)
-    .map((src, i) => ({ type: "photo", src, alt: `${product.name} photo ${i + 1}` }));
-  if (product.video) activeCatalogMedia.push({ type: "video", src: product.video, alt: `${product.name} video` });
+  const candidatePhotos = [product.image, ...(product.gallery || [])].filter(Boolean);
+  const candidateVideo = product.video ? { type: "video", src: product.video, alt: `${product.name} video` } : null;
+
+  // Do not expose missing photo links in the detail carousel. Keep a clean placeholder
+  // visible while checking, then render only the photos that actually load.
+  activeCatalogMedia = [];
   activeCatalogMediaIndex = 0;
+  detailGalleryDots.replaceChildren();
+  detailProductVideo.pause();
+  detailProductVideo.hidden = true;
+  detailProductVideo.removeAttribute("src");
+  detailProductVideo.load();
+  detailProductImage.dataset.currentImageSrc = PHOTO_FALLBACK;
+  detailProductImage.src = PHOTO_FALLBACK;
+  detailProductImage.alt = `${product.name} photos loading`;
+  detailProductImage.hidden = false;
+  $("#detailGalleryPrev").hidden = true;
+  $("#detailGalleryNext").hidden = true;
+
+  Promise.all(candidatePhotos.map(async (src, i) => ({
+    type: "photo", src, alt: `${product.name} photo ${i + 1}`, available: await isImageAvailable(src)
+  }))).then(photoResults => {
+    if (mediaLoadToken !== detailMediaLoadToken || activeCatalogProduct !== product) return;
+    activeCatalogMedia = photoResults.filter(item => item.available).map(({ type, src, alt }) => ({ type, src, alt }));
+    if (candidateVideo) activeCatalogMedia.push(candidateVideo);
+    activeCatalogMediaIndex = 0;
+    renderDetailGalleryDots();
+    if (activeCatalogMedia.length) {
+      updateDetailGallery(0);
+    } else {
+      detailProductVideo.pause();
+      detailProductVideo.hidden = true;
+      detailProductVideo.removeAttribute("src");
+      detailProductVideo.load();
+      detailProductImage.dataset.currentImageSrc = PHOTO_FALLBACK;
+      detailProductImage.src = PHOTO_FALLBACK;
+      detailProductImage.alt = `${product.name} photo unavailable`;
+      detailProductImage.hidden = false;
+      $("#detailGalleryPrev").hidden = true;
+      $("#detailGalleryNext").hidden = true;
+    }
+  });
+}
+
+function renderDetailGalleryDots() {
+  if (!detailGalleryDots) return;
   detailGalleryDots.innerHTML = activeCatalogMedia.map((item, i) => `
-    <button type="button" class="detail-gallery-dot ${i === 0 ? "active" : ""}" data-detail-gallery-index="${i}" aria-label="${item.type === "video" ? "Show product video" : `Show photo ${i + 1}`}" ${i === 0 ? 'aria-current="true"' : ""}>${item.type === "video" ? "▶" : ""}</button>`).join("");
-  updateDetailGallery(0);
+    <button type="button" class="detail-gallery-dot ${i === activeCatalogMediaIndex ? "active" : ""}" data-detail-gallery-index="${i}" aria-label="${item.type === "video" ? "Show product video" : `Show photo ${i + 1}`}" ${i === activeCatalogMediaIndex ? 'aria-current="true"' : ""}>${item.type === "video" ? "▶" : ""}</button>`).join("");
 }
 
 function clearCatalogSizeWarning() {
@@ -1133,6 +1259,7 @@ function updateDetailGallery(index = activeCatalogMediaIndex) {
     detailProductVideo.hidden = true;
     detailProductVideo.removeAttribute("src");
     detailProductVideo.load();
+    detailProductImage.dataset.currentImageSrc = item.src;
     detailProductImage.src = item.src;
     detailProductImage.alt = item.alt;
     detailProductImage.hidden = false;
@@ -1409,6 +1536,8 @@ productGrid.addEventListener("click", event => {
     video.defaultMuted = true;
     video.hidden = true;
     main.hidden = false;
+    main.dataset.currentSrc = photoButton.dataset.src;
+    main.dataset.usingFallback = "false";
     main.src = photoButton.dataset.src;
     card.querySelectorAll(".gallery-dot").forEach(dot => {
       const active = dot === photoButton;
