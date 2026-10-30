@@ -458,7 +458,7 @@ function renderProducts() {
     ? `${visible.length} saved catalog${visible.length === 1 ? "" : "s"}`
     : `${visible.length} catalog${visible.length === 1 ? "" : "s"} to explore`;
   updateWishlistShortcut();
-  visible.forEach((product, cardIndex) => {
+  visible.forEach(product => {
     const card = document.createElement("article");
     card.className = "product-card compact-product-card";
     card.innerHTML = `
@@ -472,7 +472,7 @@ function renderProducts() {
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg>
           </button>
         </div>
-        <img class="catalog-photo" src="${product.image}" alt="${escapeHtml(product.name)}" role="button" tabindex="0" aria-label="Open full-size photo: ${escapeHtml(product.name)}" loading="${cardIndex < 2 ? "eager" : "lazy"}" decoding="async" ${cardIndex < 2 ? 'fetchpriority="high"' : 'fetchpriority="auto"'} draggable="false">
+        <img class="catalog-photo" src="${product.image}" alt="${escapeHtml(product.name)}" role="button" tabindex="0" aria-label="Open full-size photo: ${escapeHtml(product.name)}" draggable="false">
         <video class="catalog-video" data-main-video="${product.id}" controls muted preload="metadata" playsinline aria-label="${escapeHtml(product.name)} product video" hidden></video>
         <button class="gallery-next" type="button" aria-label="Next photo or video" data-gallery-next="${product.id}" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4 8 8-8 8"/></svg></button>
       </div>
@@ -514,8 +514,16 @@ function renderProducts() {
       </div>`;
     productGrid.appendChild(card);
 
-    // Gallery alternatives stay lazy and load only after an intentional slider tap.
-    // The existing main-photo error handler handles unavailable alternatives.
+    // Remove failed optional gallery items without breaking the remaining photos.
+    card.querySelectorAll("[data-gallery-photo]").forEach(dot => {
+      const image = new Image();
+      image.addEventListener("error", () => {
+        if (dot.dataset.src !== product.image) dot.remove();
+        updateGalleryControls(card, product);
+      });
+      image.addEventListener("load", () => updateGalleryControls(card, product));
+      image.src = dot.dataset.src;
+    });
     const mainPhoto = card.querySelector(".catalog-photo");
     const video = card.querySelector("[data-main-video]");
     const videoDot = card.querySelector("[data-gallery-video]");
@@ -523,12 +531,6 @@ function renderProducts() {
     mainPhoto.addEventListener("error", async () => {
       const failedSrc = mainPhoto.dataset.currentSrc || mainPhoto.getAttribute("src") || "";
       if (!failedSrc || failedSrc === PHOTO_FALLBACK || mainPhoto.dataset.usingFallback === "true") return;
-      const failedDot = [...card.querySelectorAll("[data-gallery-photo]")]
-        .find(dot => dot.dataset.src === failedSrc && failedSrc !== product.image);
-      if (failedDot) {
-        failedDot.remove();
-        updateGalleryControls(card, product);
-      }
       const candidates = [...card.querySelectorAll("[data-gallery-photo]")]
         .map(dot => dot.dataset.src)
         .filter(src => src && src !== failedSrc);
