@@ -474,7 +474,7 @@ function renderProducts() {
         </div>
         <img class="catalog-photo" src="${product.image}" alt="${escapeHtml(product.name)}" role="button" tabindex="0" aria-label="Open full-size photo: ${escapeHtml(product.name)}" draggable="false">
         <video class="catalog-video" data-main-video="${product.id}" controls muted preload="metadata" playsinline aria-label="${escapeHtml(product.name)} product video" hidden></video>
-        <button class="gallery-next" type="button" aria-label="Next photo or video" data-gallery-next="${product.id}" hidden>›</button>
+        <button class="gallery-next" type="button" aria-label="Next photo or video" data-gallery-next="${product.id}" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4 8 8-8 8"/></svg></button>
       </div>
       <div class="product-gallery" data-gallery="${product.id}">
         <div class="gallery-controls-row">
@@ -494,7 +494,23 @@ function renderProducts() {
           <span class="mrp-label">MRP <del>${catalogMoney(product.mrp || product.price)}</del></span>
           ${product.mrp > product.price ? `<span class="discount-badge">${Math.round((1 - product.price / product.mrp) * 100)}% OFF</span>` : ""}
         </div>
-        <button class="view-catalog-button" type="button" data-view-catalog="${product.id}">View Catalog <span aria-hidden="true">↗</span></button>
+        <div class="compact-product-actions" aria-label="Purchase actions">
+          <button class="card-add-to-cart" type="button" data-add="${product.id}" aria-label="Add to cart: ${escapeHtml(product.name)}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h2l2.1 11.2a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 1.9-1.4L22 8H6"/><circle cx="10" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/></svg>
+            <span>+ Add to Cart</span>
+          </button>
+          <button class="card-buy-now" type="button" data-buy="${product.id}" aria-label="Buy now: ${escapeHtml(product.name)}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 2 5.8 13h5l-.8 9L18.2 10h-5z"/></svg>
+            <span>Buy Now</span>
+          </button>
+        </div>
+        <button class="more-details-button" type="button" data-view-catalog="${product.id}" aria-label="More details for ${escapeHtml(product.name)}">
+          <span class="more-details-line" aria-hidden="true"></span>
+          <svg class="more-details-file" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></svg>
+          <span class="more-details-label">More Details</span>
+          <svg class="more-details-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
+          <span class="more-details-line" aria-hidden="true"></span>
+        </button>
       </div>`;
     productGrid.appendChild(card);
 
