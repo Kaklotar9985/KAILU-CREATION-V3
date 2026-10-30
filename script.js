@@ -1045,6 +1045,38 @@ const detailGalleryDots = $("#detailGalleryDots");
 const detailProductImage = $("#detailProductImage");
 const detailProductVideo = $("#detailProductVideo");
 
+// Keep the product-details popup in the browser history so mobile/Android Back
+// closes the popup first instead of navigating away from the storefront.
+let catalogDetailsHistoryToken = null;
+let catalogDetailsHistoryEntryActive = false;
+let catalogDetailsSavedScrollY = 0;
+let catalogDetailsHistoryClosePending = false;
+let catalogDetailsPendingRestoreScroll = false;
+let catalogDetailsShouldRestoreScroll = false;
+let catalogDetailsAfterHistoryClose = null;
+let catalogDetailsHistorySequence = 0;
+
+function restoreCatalogDetailsScrollPosition() {
+  const savedY = Math.max(0, Number(catalogDetailsSavedScrollY) || 0);
+  // Run after the browser's own history scroll restoration to preserve the exact
+  // catalog-list position across both Android Back and the popup close controls.
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    window.scrollTo({ left: 0, top: savedY, behavior: "instant" });
+  }));
+}
+
+function clearCatalogDetailsHistoryState(state) {
+  const nextState = state && typeof state === "object" ? { ...state } : {};
+  if (nextState.kailuUI === "catalog-details" || nextState.kailuUI === "shared-catalog") {
+    delete nextState.kailuUI;
+    delete nextState.kailuUiToken;
+    delete nextState.catalogDetailsToken;
+    delete nextState.catalogScrollY;
+    delete nextState.catalogId;
+  }
+  return nextState;
+}
+
 detailProductImage.addEventListener("error", () => {
   const failedSrc = detailProductImage.dataset.currentImageSrc || detailProductImage.getAttribute("src") || "";
   if (!failedSrc || failedSrc === PHOTO_FALLBACK) return;
@@ -1351,17 +1383,76 @@ function updateDetailGallery(index = activeCatalogMediaIndex) {
 function openCatalogDetails(id, options = {}) {
   const product = products.find(item => item.id === Number(id) || String(item.catalogId) === String(id));
   if (!product || !catalogDetailsModal) return;
+
+  // The requested Back interception is for the mobile layout only. Keep the
+  // existing desktop behavior, including the old shared-link history entry.
+  const isMobileCatalogViewport = window.matchMedia("(max-width: 620px)").matches;
+  const popupWasClosed = catalogDetailsModal.hidden;
+  if (popupWasClosed) {
+    if (catalogDetailsHistoryClosePending) {
+      // If a user taps another catalog during the tiny close/back transition,
+      // open it only after the previous modal history entry has been removed.
+      if (!catalogDetailsAfterHistoryClose) {
+        catalogDetailsAfterHistoryClose = () => openCatalogDetails(id, options);
+      }
+      return;
+    }
+
+    catalogDetailsSavedScrollY = window.scrollY || window.pageYOffset || 0;
+    catalogDetailsShouldRestoreScroll = isMobileCatalogViewport;
+    catalogDetailsAfterHistoryClose = null;
+
+    const currentState = history.state && typeof history.state === "object" ? { ...history.state } : {};
+    const hasExistingCatalogModalEntry = currentState.kailuUI === "catalog-details" || currentState.kailuUI === "shared-catalog";
+    const shouldTrackHistory = isMobileCatalogViewport || options.trackHistory === true || hasExistingCatalogModalEntry;
+    if (shouldTrackHistory && hasExistingCatalogModalEntry) {
+      // Adopt a legacy shared-catalog entry when a page is restored from an
+      // older session; do not add a duplicate modal entry.
+      catalogDetailsHistoryToken = currentState.kailuUiToken || currentState.catalogDetailsToken || null;
+      catalogDetailsHistoryEntryActive = true;
+      if (isMobileCatalogViewport && currentState.kailuUI !== "catalog-details") {
+        currentState.kailuUI = "catalog-details";
+        currentState.kailuUiToken = catalogDetailsHistoryToken || `catalog-details-${Date.now()}-${++catalogDetailsHistorySequence}`;
+        currentState.catalogId = catalogWishlistKey(product);
+        history.replaceState(currentState, "", window.location.href);
+        catalogDetailsHistoryToken = currentState.kailuUiToken;
+      }
+    } else if (shouldTrackHistory) {
+      catalogDetailsHistoryToken = `catalog-details-${Date.now()}-${++catalogDetailsHistorySequence}`;
+      catalogDetailsHistoryEntryActive = true;
+      history.pushState(
+        {
+          ...currentState,
+          kailuUI: options.trackHistory === true && !isMobileCatalogViewport ? "shared-catalog" : "catalog-details",
+          kailuUiToken: catalogDetailsHistoryToken,
+          catalogId: catalogWishlistKey(product),
+          catalogScrollY: catalogDetailsSavedScrollY
+        },
+        "",
+        window.location.href
+      );
+    } else {
+      // Desktop More Details has no modal history entry, matching the existing
+      // desktop navigation behavior.
+      catalogDetailsHistoryToken = null;
+      catalogDetailsHistoryEntryActive = false;
+    }
+  }
+
   setActiveCatalogProduct(product);
   catalogDetailsModal.hidden = false;
   document.body.classList.add("catalog-details-open");
-  if (options.trackHistory && !(history.state && history.state.kailuUI === "shared-catalog")) {
-    history.pushState({ ...(history.state || {}), kailuUI: "shared-catalog", catalogId: catalogWishlistKey(product) }, "", window.location.href);
-  }
   $("#closeCatalogDetails").focus();
 }
 
 function closeCatalogDetails(options = {}) {
   if (!catalogDetailsModal || catalogDetailsModal.hidden) return;
+
+  const currentState = history.state && typeof history.state === "object" ? history.state : {};
+  const isOwnModalHistoryEntry = catalogDetailsHistoryEntryActive &&
+    (currentState.kailuUI === "catalog-details" || currentState.kailuUI === "shared-catalog") &&
+    (!catalogDetailsHistoryToken || !currentState.kailuUiToken || currentState.kailuUiToken === catalogDetailsHistoryToken);
+
   catalogDetailsModal.hidden = true;
   document.body.classList.remove("catalog-details-open");
   detailProductVideo.pause();
@@ -1369,8 +1460,22 @@ function closeCatalogDetails(options = {}) {
   detailProductVideo.load();
   activeCatalogProduct = null;
   activeCatalogMedia = [];
-  if (!options.skipHistory && !options.fromPopstate && history.state && history.state.kailuUI === "shared-catalog") {
+  catalogDetailsHistoryEntryActive = false;
+  catalogDetailsHistoryToken = null;
+  const shouldRestoreScroll = catalogDetailsShouldRestoreScroll || options.fromPopstate === true;
+  catalogDetailsShouldRestoreScroll = false;
+
+  if (!options.skipHistory && !options.fromPopstate && isOwnModalHistoryEntry) {
+    catalogDetailsPendingRestoreScroll = shouldRestoreScroll;
+    // Pop the modal entry so the next Back press performs normal browser
+    // navigation. Defer any follow-on action (for example Buy Now -> cart)
+    // until this history traversal has completed.
+    catalogDetailsHistoryClosePending = true;
+    catalogDetailsAfterHistoryClose = typeof options.afterHistory === "function" ? options.afterHistory : null;
     history.back();
+  } else {
+    if (shouldRestoreScroll) restoreCatalogDetailsScrollPosition();
+    if (typeof options.afterHistory === "function") options.afterHistory();
   }
 }
 
@@ -1421,8 +1526,7 @@ catalogDetailsModal.addEventListener("click", event => {
     const productId = activeCatalogProduct.id;
     const size = selectedCatalogSize;
     const qty = catalogQuantity;
-    closeCatalogDetails();
-    buyNow(productId, size, qty);
+    closeCatalogDetails({ afterHistory: () => buyNow(productId, size, qty) });
   }
 });
 
@@ -1884,6 +1988,16 @@ document.addEventListener("keydown", event => {
 
 // Android/mobile browser Back: close the active UI and return to catalog instead of exiting.
 window.addEventListener("popstate", () => {
+  if (catalogDetailsHistoryClosePending) {
+    catalogDetailsHistoryClosePending = false;
+    if (catalogDetailsPendingRestoreScroll) restoreCatalogDetailsScrollPosition();
+    catalogDetailsPendingRestoreScroll = false;
+    const afterClose = catalogDetailsAfterHistoryClose;
+    catalogDetailsAfterHistoryClose = null;
+    if (afterClose) afterClose();
+    return;
+  }
+
   const photoLightbox = $("#photoLightbox");
   if (photoLightbox && !photoLightbox.hidden) {
     closePhotoLightbox({ fromPopstate: true });
@@ -1891,8 +2005,9 @@ window.addEventListener("popstate", () => {
   }
 
   if (catalogDetailsModal && !catalogDetailsModal.hidden) {
+    // Back already returned to the listing history entry. Close only the popup
+    // and restore the catalog's previous scroll position; do not navigate again.
     closeCatalogDetails({ fromPopstate: true, skipHistory: true });
-    scrollToCatalogList();
     return;
   }
 
@@ -1920,8 +2035,19 @@ const requestedCatalogId = new URLSearchParams(window.location.search).get("cata
 if (requestedCatalogId) {
   const linkedProduct = products.find(product => String(product.catalogId) === requestedCatalogId || String(product.id) === requestedCatalogId);
   if (linkedProduct) {
+    const isMobileCatalogViewport = window.matchMedia("(max-width: 620px)").matches;
+    if (isMobileCatalogViewport) {
+      // Make the original shared-link entry the clean catalog-list destination.
+      // The popup itself gets a separate history entry when it opens below.
+      const sharedBaseUrl = new URL(window.location.href);
+      sharedBaseUrl.searchParams.delete("catalog");
+      sharedBaseUrl.hash = "products";
+      const sharedBaseState = clearCatalogDetailsHistoryState(history.state);
+      history.replaceState(sharedBaseState, "", `${sharedBaseUrl.pathname}${sharedBaseUrl.search}${sharedBaseUrl.hash}`);
+    }
+
     window.setTimeout(() => {
-      $("#products").scrollIntoView({ behavior: "auto", block: "start" });
+      $("#products").scrollIntoView({ behavior: isMobileCatalogViewport ? "instant" : "auto", block: "start" });
       openCatalogDetails(linkedProduct.id, { trackHistory: true });
     }, 0);
   } else {
