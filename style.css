@@ -2874,9 +2874,9 @@ body.catalog-details-open{overflow:hidden!important}
     align-self: stretch !important;
   }
 
-  /* Reduce image-area height without cropping or distorting product photos. */
+  /* Increase only the mobile image area; preserve the original photo ratio. */
   .compact-product-card .product-image {
-    aspect-ratio: .95 / 1 !important;
+    aspect-ratio: .78 / 1 !important;
   }
 
   /* Bring the dot row closer to the image and remove its excess vertical space. */
