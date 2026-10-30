@@ -2874,9 +2874,9 @@ body.catalog-details-open{overflow:hidden!important}
     align-self: stretch !important;
   }
 
-  /* Increase only the mobile image area; preserve the original photo ratio. */
+  /* Reduce image-area height without cropping or distorting product photos. */
   .compact-product-card .product-image {
-    aspect-ratio: .78 / 1 !important;
+    aspect-ratio: .95 / 1 !important;
   }
 
   /* Bring the dot row closer to the image and remove its excess vertical space. */
@@ -2931,5 +2931,40 @@ body.catalog-details-open{overflow:hidden!important}
   .compact-product-card .compact-product-info {
     padding-left: 7px !important;
     padding-right: 7px !important;
+  }
+}
+
+
+/* =========================================================
+   MOBILE ONLY — full-width catalog photos without cropping
+   Keep the photo's intrinsic ratio; card details are untouched.
+========================================================= */
+@media (max-width: 480px) {
+  .compact-product-card .product-image {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    aspect-ratio: auto !important;
+    display: block !important;
+    padding: 0 !important;
+  }
+
+  .compact-product-card .product-image .catalog-photo {
+    position: relative !important;
+    inset: auto !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    aspect-ratio: auto !important;
+    margin: 0 !important;
+    object-fit: contain !important;
+    object-position: center center !important;
+  }
+
+  /* Keep the image's intrinsic box as a height placeholder while a video plays. */
+  .compact-product-card .product-image .catalog-photo[hidden] {
+    display: block !important;
+    visibility: hidden !important;
   }
 }
