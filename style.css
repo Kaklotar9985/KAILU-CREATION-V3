@@ -2862,3 +2862,74 @@ body.catalog-details-open{overflow:hidden!important}
   .compact-product-card .more-details-file { flex-basis:14px !important; width:14px !important; height:14px !important; }
   .compact-product-card .more-details-chevron { flex-basis:13px !important; width:13px !important; height:13px !important; }
 }
+
+/* =========================================================
+   MOBILE ONLY — compact catalog cards
+   Keep desktop, laptop and tablet card styling unchanged.
+========================================================= */
+@media (max-width: 480px) {
+  .compact-product-card {
+    height: auto !important;
+    min-height: 0 !important;
+    align-self: stretch !important;
+  }
+
+  /* Reduce image-area height without cropping or distorting product photos. */
+  .compact-product-card .product-image {
+    aspect-ratio: .95 / 1 !important;
+  }
+
+  /* Bring the dot row closer to the image and remove its excess vertical space. */
+  .compact-product-card .product-gallery {
+    padding: 0 !important;
+    min-height: 0 !important;
+  }
+  .compact-product-card .gallery-dots {
+    min-height: 15px !important;
+    padding: 1px 5px !important;
+    gap: 6px !important;
+  }
+
+  /* Let details use their natural content height instead of stretching. */
+  .compact-product-card .compact-product-info {
+    flex: 0 0 auto !important;
+    padding: 6px 8px 6px !important;
+    gap: 0 !important;
+  }
+  .compact-product-card .compact-product-info .product-category {
+    margin: 0 0 2px !important;
+    line-height: 1.25 !important;
+  }
+  .compact-product-card .compact-product-info h3 {
+    height: 2.5em !important;
+    min-height: 2.5em !important;
+    margin: 1px 0 4px !important;
+    line-height: 1.25 !important;
+    -webkit-line-clamp: 2 !important;
+  }
+  .compact-product-card .compact-product-pricing {
+    min-height: 30px !important;
+    height: 30px !important;
+    margin: 0 0 4px !important;
+  }
+  .compact-product-card .compact-product-actions {
+    gap: 5px !important;
+  }
+  .compact-product-card .compact-product-actions button {
+    min-height: 38px !important;
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
+  }
+  .compact-product-card .more-details-button {
+    min-height: 29px !important;
+    margin: 3px 0 0 !important;
+    padding: 0 1px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .compact-product-card .compact-product-info {
+    padding-left: 7px !important;
+    padding-right: 7px !important;
+  }
+}
