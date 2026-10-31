@@ -2376,8 +2376,29 @@ body.catalog-details-open{overflow:hidden!important}
 
 /* Product-detail photo click-to-fullscreen and zoom controls */
 #detailProductImage { cursor: zoom-in; }
-.photo-lightbox { overflow: hidden; }
-.photo-lightbox img { transition: transform .18s ease; transform-origin: center center; cursor: zoom-in; }
+.photo-lightbox {
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+.photo-lightbox img {
+  flex: 0 0 auto;
+  object-fit: contain;
+  object-position: center;
+  transform: translate3d(0, 0, 0) scale(1);
+  transform-origin: center center;
+  transition: transform .18s ease;
+  touch-action: none;
+  cursor: zoom-in;
+  will-change: transform;
+}
+.photo-lightbox img.is-dragging {
+  transition: none !important;
+  cursor: grabbing !important;
+}
+.photo-lightbox button {
+  touch-action: manipulation;
+}
 .photo-lightbox-zoom-controls[hidden] { display: none !important; }
 .photo-lightbox-zoom-controls {
   position: absolute; z-index: 4; top: max(72px, calc(env(safe-area-inset-top) + 62px)); right: 16px;

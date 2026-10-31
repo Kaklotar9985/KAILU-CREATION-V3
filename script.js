@@ -1544,30 +1544,222 @@ let lightboxItems = [];
 let lightboxIndex = 0;
 let lightboxCard = null;
 let lightboxZoom = 1;
+let lightboxPanX = 0;
+let lightboxPanY = 0;
 const LIGHTBOX_MIN_ZOOM = 1;
 const LIGHTBOX_MAX_ZOOM = 4;
 const LIGHTBOX_ZOOM_STEP = 0.5;
+const lightboxPointers = new Map();
+const lightboxPointerCaptureTargets = new Map();
+let lightboxPanGesture = null;
+let lightboxPinchGesture = null;
+let lightboxSuppressClickUntil = 0;
+
+function getLightboxBounds() {
+  const viewer = $("#photoLightbox");
+  const img = $("#photoLightboxImage");
+  if (!viewer || !img) return { maxX: 0, maxY: 0 };
+
+  // offsetWidth/offsetHeight are not affected by CSS transforms, so they
+  // provide the image's original contain-fit dimensions at every zoom level.
+  const imageWidth = img.offsetWidth || 0;
+  const imageHeight = img.offsetHeight || 0;
+  const style = window.getComputedStyle(viewer);
+  const innerWidth = Math.max(0, viewer.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0));
+  const innerHeight = Math.max(0, viewer.clientHeight - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0));
+
+  return {
+    maxX: Math.max(0, (imageWidth * lightboxZoom - innerWidth) / 2),
+    maxY: Math.max(0, (imageHeight * lightboxZoom - innerHeight) / 2)
+  };
+}
+
+function clampLightboxPan() {
+  const bounds = getLightboxBounds();
+  lightboxPanX = Math.max(-bounds.maxX, Math.min(bounds.maxX, lightboxPanX));
+  lightboxPanY = Math.max(-bounds.maxY, Math.min(bounds.maxY, lightboxPanY));
+  if (lightboxZoom <= LIGHTBOX_MIN_ZOOM) {
+    lightboxPanX = 0;
+    lightboxPanY = 0;
+  }
+}
 
 function applyLightboxZoom() {
   const img = $("#photoLightboxImage");
   if (!img) return;
-  img.style.transform = `scale(${lightboxZoom})`;
-  img.style.cursor = lightboxZoom > 1 ? "zoom-out" : "zoom-in";
+  clampLightboxPan();
+  img.style.transform = `translate3d(${lightboxPanX}px, ${lightboxPanY}px, 0) scale(${lightboxZoom})`;
+  img.style.cursor = lightboxZoom > 1 ? (lightboxPanGesture ? "grabbing" : "grab") : "zoom-in";
   const zoomOut = $("#photoLightboxZoomOut");
   const zoomIn = $("#photoLightboxZoomIn");
   if (zoomOut) zoomOut.disabled = lightboxZoom <= LIGHTBOX_MIN_ZOOM;
   if (zoomIn) zoomIn.disabled = lightboxZoom >= LIGHTBOX_MAX_ZOOM;
-  img.setAttribute("aria-label", lightboxZoom > 1 ? "Product photo zoomed in; click to reset zoom" : "Product photo full screen; click to zoom in");
+  img.setAttribute("aria-label", lightboxZoom > 1 ? "Product photo zoomed in; drag to move, tap to reset zoom" : "Product photo full screen; tap to zoom in");
 }
 
-function setLightboxZoom(value) {
-  lightboxZoom = Math.max(LIGHTBOX_MIN_ZOOM, Math.min(LIGHTBOX_MAX_ZOOM, Number(value) || 1));
+function setLightboxZoom(value, anchor = { x: 0, y: 0 }) {
+  const nextZoom = Math.max(LIGHTBOX_MIN_ZOOM, Math.min(LIGHTBOX_MAX_ZOOM, Number(value) || 1));
+  const previousZoom = lightboxZoom;
+  if (nextZoom === previousZoom) return;
+
+  // Keep the image point beneath the chosen anchor stationary while zooming.
+  const ratio = nextZoom / previousZoom;
+  lightboxPanX = anchor.x - (anchor.x - lightboxPanX) * ratio;
+  lightboxPanY = anchor.y - (anchor.y - lightboxPanY) * ratio;
+  lightboxZoom = nextZoom;
   applyLightboxZoom();
 }
 
 function resetLightboxZoom() {
   lightboxZoom = 1;
+  lightboxPanX = 0;
+  lightboxPanY = 0;
+  lightboxPanGesture = null;
+  lightboxPinchGesture = null;
+  lightboxPointers.clear();
+  lightboxPointerCaptureTargets.clear();
+  const img = $("#photoLightboxImage");
+  if (img) img.classList.remove("is-dragging");
   applyLightboxZoom();
+}
+
+function lightboxPointFromEvent(event) {
+  const viewer = $("#photoLightbox");
+  const rect = viewer.getBoundingClientRect();
+  return {
+    x: event.clientX - (rect.left + rect.width / 2),
+    y: event.clientY - (rect.top + rect.height / 2)
+  };
+}
+
+function lightboxPointerDistance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function beginLightboxPan(pointer) {
+  lightboxPanGesture = {
+    pointerId: pointer.id,
+    startClientX: pointer.x,
+    startClientY: pointer.y,
+    startPanX: lightboxPanX,
+    startPanY: lightboxPanY,
+    moved: false
+  };
+}
+
+function handleLightboxPointerDown(event) {
+  const img = $("#photoLightboxImage");
+  if (!img || img.hidden || $("#photoLightbox").hidden) return;
+  if (event.pointerType === "mouse" && event.button !== 0) return;
+  const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+  const isPhotoPointer = target === img || Boolean(target && target.closest("#photoLightboxImage"));
+  const isSecondTouch = event.pointerType === "touch" && lightboxPointers.size > 0 && !(target && target.closest("button"));
+  if (!isPhotoPointer && !isSecondTouch) return;
+
+  lightboxPointers.set(event.pointerId, { id: event.pointerId, x: event.clientX, y: event.clientY });
+  const captureTarget = isPhotoPointer ? img : event.currentTarget;
+  lightboxPointerCaptureTargets.set(event.pointerId, captureTarget);
+  try { captureTarget.setPointerCapture(event.pointerId); } catch (_) { /* Pointer capture can be unavailable in older browsers. */ }
+
+  if (lightboxPointers.size >= 2) {
+    const points = [...lightboxPointers.values()].slice(0, 2);
+    const midpoint = { x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2 };
+    lightboxPinchGesture = {
+      startDistance: Math.max(1, lightboxPointerDistance(points[0], points[1])),
+      startZoom: lightboxZoom,
+      startPanX: lightboxPanX,
+      startPanY: lightboxPanY,
+      startMidpoint: lightboxPointFromEvent({ clientX: midpoint.x, clientY: midpoint.y })
+    };
+    lightboxPanGesture = null;
+    img.classList.add("is-dragging");
+    event.preventDefault();
+    return;
+  }
+
+  if (lightboxZoom > 1) {
+    beginLightboxPan({ id: event.pointerId, x: event.clientX, y: event.clientY });
+    img.classList.add("is-dragging");
+  }
+  event.preventDefault();
+}
+
+function handleLightboxPointerMove(event) {
+  if (!lightboxPointers.has(event.pointerId)) return;
+  lightboxPointers.set(event.pointerId, { id: event.pointerId, x: event.clientX, y: event.clientY });
+  const img = $("#photoLightboxImage");
+
+  if (lightboxPointers.size >= 2 && lightboxPinchGesture) {
+    const points = [...lightboxPointers.values()].slice(0, 2);
+    const distance = Math.max(1, lightboxPointerDistance(points[0], points[1]));
+    const midpoint = { x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2 };
+    const currentMidpoint = lightboxPointFromEvent({ clientX: midpoint.x, clientY: midpoint.y });
+    const nextZoom = Math.max(LIGHTBOX_MIN_ZOOM, Math.min(LIGHTBOX_MAX_ZOOM, lightboxPinchGesture.startZoom * distance / lightboxPinchGesture.startDistance));
+    const ratio = nextZoom / lightboxPinchGesture.startZoom;
+    lightboxZoom = nextZoom;
+    lightboxPanX = currentMidpoint.x - (lightboxPinchGesture.startMidpoint.x - lightboxPinchGesture.startPanX) * ratio;
+    lightboxPanY = currentMidpoint.y - (lightboxPinchGesture.startMidpoint.y - lightboxPinchGesture.startPanY) * ratio;
+    applyLightboxZoom();
+    event.preventDefault();
+    return;
+  }
+
+  if (lightboxPanGesture && lightboxPanGesture.pointerId === event.pointerId) {
+    const deltaX = event.clientX - lightboxPanGesture.startClientX;
+    const deltaY = event.clientY - lightboxPanGesture.startClientY;
+    if (Math.hypot(deltaX, deltaY) > 5) {
+      lightboxPanGesture.moved = true;
+      lightboxSuppressClickUntil = Date.now() + 450;
+    }
+    if (lightboxZoom > 1) {
+      lightboxPanX = lightboxPanGesture.startPanX + deltaX;
+      lightboxPanY = lightboxPanGesture.startPanY + deltaY;
+      applyLightboxZoom();
+    }
+    event.preventDefault();
+  }
+}
+
+function handleLightboxPointerEnd(event) {
+  const img = $("#photoLightboxImage");
+  const wasTracked = lightboxPointers.has(event.pointerId);
+  const captureTarget = lightboxPointerCaptureTargets.get(event.pointerId);
+  if (!wasTracked && !captureTarget) return;
+  const wasPinching = Boolean(lightboxPinchGesture);
+  if (lightboxPanGesture && lightboxPanGesture.pointerId === event.pointerId && lightboxPanGesture.moved) {
+    lightboxSuppressClickUntil = Date.now() + 450;
+  }
+  lightboxPointers.delete(event.pointerId);
+  lightboxPointerCaptureTargets.delete(event.pointerId);
+
+  if (lightboxPointers.size >= 2) {
+    const points = [...lightboxPointers.values()].slice(0, 2);
+    const midpoint = { x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2 };
+    lightboxPinchGesture = {
+      startDistance: Math.max(1, lightboxPointerDistance(points[0], points[1])),
+      startZoom: lightboxZoom,
+      startPanX: lightboxPanX,
+      startPanY: lightboxPanY,
+      startMidpoint: lightboxPointFromEvent({ clientX: midpoint.x, clientY: midpoint.y })
+    };
+    lightboxPanGesture = null;
+  } else {
+    lightboxPinchGesture = null;
+    lightboxPanGesture = null;
+    if (lightboxPointers.size === 1) {
+      const remaining = [...lightboxPointers.values()][0];
+      if (lightboxZoom > 1) beginLightboxPan(remaining);
+    }
+  }
+
+  if (img && lightboxPointers.size === 0) {
+    img.classList.remove("is-dragging");
+    applyLightboxZoom();
+  }
+  if (wasPinching) lightboxSuppressClickUntil = Date.now() + 450;
+  if (captureTarget && captureTarget.hasPointerCapture && captureTarget.hasPointerCapture(event.pointerId)) {
+    try { captureTarget.releasePointerCapture(event.pointerId); } catch (_) { /* Already released by the browser. */ }
+  }
 }
 
 function stopLightboxVideo() {
@@ -1819,6 +2011,13 @@ function closePhotoLightbox(options = {}) {
   lightboxItems = [];
   lightboxIndex = 0;
   lightboxCard = null;
+  lightboxPointers.clear();
+  lightboxPointerCaptureTargets.clear();
+  lightboxPanGesture = null;
+  lightboxPinchGesture = null;
+  lightboxPanX = 0;
+  lightboxPanY = 0;
+  lightboxZoom = 1;
   document.body.classList.remove("photo-viewer-open");
   if (wasOpen && !options.fromPopstate && history.state && history.state.kailuUI === "photo") {
     history.back();
@@ -1842,14 +2041,33 @@ $("#photoLightboxZoomReset").addEventListener("click", event => {
   event.stopPropagation();
   resetLightboxZoom();
 });
-$("#photoLightboxImage").addEventListener("click", () => {
-  // A direct tap/click on the full-screen photo toggles between fit-to-screen and 2x zoom.
+const lightboxImage = $("#photoLightboxImage");
+lightboxImage.addEventListener("load", () => {
+  if (!$("#photoLightbox").hidden) applyLightboxZoom();
+});
+const lightboxViewer = $("#photoLightbox");
+lightboxViewer.addEventListener("pointerdown", handleLightboxPointerDown, { passive: false });
+lightboxViewer.addEventListener("pointermove", handleLightboxPointerMove, { passive: false });
+lightboxViewer.addEventListener("pointerup", handleLightboxPointerEnd);
+lightboxViewer.addEventListener("pointercancel", handleLightboxPointerEnd);
+lightboxViewer.addEventListener("lostpointercapture", handleLightboxPointerEnd);
+lightboxImage.addEventListener("click", event => {
+  // A drag or pinch must never be interpreted as a click-to-zoom action.
+  if (Date.now() < lightboxSuppressClickUntil) {
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
+  // A deliberate tap/click toggles between fit-to-screen and 2x zoom.
   setLightboxZoom(lightboxZoom > 1 ? 1 : 2);
 });
-$("#photoLightboxImage").addEventListener("wheel", event => {
+lightboxImage.addEventListener("wheel", event => {
   event.preventDefault();
-  setLightboxZoom(lightboxZoom + (event.deltaY < 0 ? LIGHTBOX_ZOOM_STEP : -LIGHTBOX_ZOOM_STEP));
+  setLightboxZoom(lightboxZoom + (event.deltaY < 0 ? LIGHTBOX_ZOOM_STEP : -LIGHTBOX_ZOOM_STEP), lightboxPointFromEvent(event));
 }, { passive: false });
+window.addEventListener("resize", () => {
+  if (!$("#photoLightbox").hidden) applyLightboxZoom();
+});
 document.addEventListener("keydown", event => {
   if (event.key === "Escape" && !$("#photoLightbox").hidden) closePhotoLightbox();
   if (!$("#photoLightbox").hidden && event.key === "ArrowRight") moveLightboxPhoto(1);
