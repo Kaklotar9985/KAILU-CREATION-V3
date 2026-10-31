@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="images/kailu-logo-mark-tm.webp">
   <meta property="og:title" content="KAILU CREATION™ | Your Style, Our Creation">
   <meta property="og:image" content="images/kailu-logo-transparent-tm.webp">
-  <link rel="stylesheet" href="style.css?v=20261031-image-pan-fix">
+  <link rel="stylesheet" href="style.css?v=20261031-cart-drawer-scroll-fix">
 </head>
 <body>
   <div class="announcement-bar">
@@ -153,40 +153,45 @@
 
   <div id="overlay" class="overlay" hidden></div>
   <aside id="cartDrawer" class="cart-drawer" aria-label="Shopping cart" aria-modal="true" role="dialog" hidden>
-    <div class="cart-head"><div><span class="eyebrow">YOUR SELECTION</span><h2>Your Cart <span id="drawerCount">(0)</span></h2></div><button id="closeCart" class="icon-button" aria-label="Close cart">×</button></div>
-    <div id="cartItems" class="cart-items"></div>
-    <div id="cartEmpty" class="cart-empty"><span>🛒</span><h3>Your cart is empty</h3><p>Add a few products to get started.</p><button id="continueShoppingEmpty" class="secondary-button" type="button">Continue shopping</button></div>
-    <div id="cartBottom" class="cart-bottom" hidden>
-      <div class="total-row"><span>Subtotal</span><strong id="cartTotal">₹0</strong></div>
-      <p class="cart-note">Delivery charges, availability and final total will be confirmed by the store.</p>
-      <div class="cod-note"><strong>✓ Cash on Delivery (COD)</strong><span>Payment is collected when your order is delivered.</span></div>
-      <button id="proceedCheckout" class="whatsapp-button proceed-checkout" type="button" hidden>Proceed to Order / Checkout</button>
-      <div id="checkoutFields" hidden>
-      <button id="continueToDetails" class="whatsapp-button continue-details" type="button">Continue to Place Order</button>
-      <div id="deliveryFields" hidden>
-      <div class="checkout-heading">Delivery details</div>
-      <label class="field-label" for="customerName">Full name <span class="required-mark">*</span></label>
-      <input id="customerName" class="customer-input" type="text" placeholder="Enter your full name" autocomplete="name" required>
-      <label class="field-label" for="customerEmail">Email Address <span class="optional-mark">(optional)</span></label>
-      <input id="customerEmail" class="customer-input" type="email" placeholder="Enter your email address" autocomplete="email">
-      <label class="field-label" for="mobileNumber">Mobile Number <span class="required-mark">*</span></label>
-      <input id="mobileNumber" class="customer-input" type="tel" inputmode="numeric" pattern="[6-9][0-9]{9}" minlength="10" maxlength="10" placeholder="Enter 10-digit mobile number" autocomplete="tel-national" required>
-      <label class="field-label" for="houseBuilding">House No. / Building Name <span class="required-mark">*</span></label>
-      <input id="houseBuilding" class="customer-input" type="text" placeholder="House number or building name" autocomplete="address-line1" required>
-      <label class="field-label" for="landmark">Landmark</label>
-      <input id="landmark" class="customer-input" type="text" placeholder="Nearby landmark (optional)" autocomplete="off">
-      <label class="field-label" for="roadArea">Road Name / Area / Colony <span class="required-mark">*</span></label>
-      <input id="roadArea" class="customer-input" type="text" placeholder="Road, area or colony" autocomplete="address-line2" required>
-      <label class="field-label" for="pincode">Pincode <span class="required-mark">*</span></label>
-      <input id="pincode" class="customer-input" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="Enter 6-digit PIN code" autocomplete="postal-code" aria-describedby="pincodeFeedback" aria-invalid="false" required>
-      <small id="pincodeFeedback" class="pincode-feedback" data-status="info" aria-live="polite">Enter a 6-digit PIN code to fill City and State automatically.</small>
-      <label class="field-label" for="city">City / District <span class="required-mark">*</span></label>
-      <input id="city" class="customer-input auto-location-field" type="text" placeholder="Auto-filled from PIN code" autocomplete="address-level2" readonly required>
-      <label class="field-label" for="state">State <span class="required-mark">*</span></label>
-      <input id="state" class="customer-input auto-location-field" type="text" placeholder="Auto-filled from PIN code" autocomplete="address-level1" readonly required>
-      <button id="whatsappOrder" class="whatsapp-button"><span>◉</span> Place Order </button>
-      <small class="privacy-note">Your order details will be submitted to the configured order system.</small>
-      </div>
+    <div class="cart-head">
+      <div><span class="eyebrow">YOUR SELECTION</span><h2>Your Cart <span id="drawerCount">(0)</span></h2></div>
+      <button id="closeCart" class="icon-button" aria-label="Close cart">×</button>
+    </div>
+    <div id="cartContent" class="cart-content-scroll">
+      <div id="cartItems" class="cart-items"></div>
+      <div id="cartEmpty" class="cart-empty"><span>🛒</span><h3>Your cart is empty</h3><p>Add a few products to get started.</p><button id="continueShoppingEmpty" class="secondary-button" type="button">Continue shopping</button></div>
+      <div id="cartBottom" class="cart-bottom" hidden>
+        <div class="total-row"><span>Subtotal</span><strong id="cartTotal">₹0</strong></div>
+        <p class="cart-note">Delivery charges, availability and final total will be confirmed by the store.</p>
+        <div class="cod-note"><strong>✓ Cash on Delivery (COD)</strong><span>Payment is collected when your order is delivered.</span></div>
+        <button id="proceedCheckout" class="whatsapp-button proceed-checkout" type="button" hidden>Proceed to Order / Checkout</button>
+        <div id="checkoutFields" hidden>
+          <button id="continueToDetails" class="whatsapp-button continue-details" type="button">Continue to Place Order</button>
+          <div id="deliveryFields" hidden>
+            <div class="checkout-heading">Delivery details</div>
+            <label class="field-label" for="customerName">Full name <span class="required-mark">*</span></label>
+            <input id="customerName" class="customer-input" type="text" placeholder="Enter your full name" autocomplete="name" required>
+            <label class="field-label" for="customerEmail">Email Address <span class="optional-mark">(optional)</span></label>
+            <input id="customerEmail" class="customer-input" type="email" placeholder="Enter your email address" autocomplete="email">
+            <label class="field-label" for="mobileNumber">Mobile Number <span class="required-mark">*</span></label>
+            <input id="mobileNumber" class="customer-input" type="tel" inputmode="numeric" pattern="[6-9][0-9]{9}" minlength="10" maxlength="10" placeholder="Enter 10-digit mobile number" autocomplete="tel-national" required>
+            <label class="field-label" for="houseBuilding">House No. / Building Name <span class="required-mark">*</span></label>
+            <input id="houseBuilding" class="customer-input" type="text" placeholder="House number or building name" autocomplete="address-line1" required>
+            <label class="field-label" for="landmark">Landmark</label>
+            <input id="landmark" class="customer-input" type="text" placeholder="Nearby landmark (optional)" autocomplete="off">
+            <label class="field-label" for="roadArea">Road Name / Area / Colony <span class="required-mark">*</span></label>
+            <input id="roadArea" class="customer-input" type="text" placeholder="Road, area or colony" autocomplete="address-line2" required>
+            <label class="field-label" for="pincode">Pincode <span class="required-mark">*</span></label>
+            <input id="pincode" class="customer-input" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="Enter 6-digit PIN code" autocomplete="postal-code" aria-describedby="pincodeFeedback" aria-invalid="false" required>
+            <small id="pincodeFeedback" class="pincode-feedback" data-status="info" aria-live="polite">Enter a 6-digit PIN code to fill City and State automatically.</small>
+            <label class="field-label" for="city">City / District <span class="required-mark">*</span></label>
+            <input id="city" class="customer-input auto-location-field" type="text" placeholder="Auto-filled from PIN code" autocomplete="address-level2" readonly required>
+            <label class="field-label" for="state">State <span class="required-mark">*</span></label>
+            <input id="state" class="customer-input auto-location-field" type="text" placeholder="Auto-filled from PIN code" autocomplete="address-level1" readonly required>
+            <button id="whatsappOrder" class="whatsapp-button"><span>◉</span> Place Order </button>
+            <small class="privacy-note">Your order details will be submitted to the configured order system.</small>
+          </div>
+        </div>
       </div>
     </div>
   </aside>
@@ -254,6 +259,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="pincode-serviceability.js"></script>
   <script src="products-data.js?v=20261029-video-icon-fix"></script>
-  <script src="script.js?v=20261031-image-pan-fix"></script>
+  <script src="script.js?v=20261031-cart-drawer-scroll-fix"></script>
 </body>
 </html>

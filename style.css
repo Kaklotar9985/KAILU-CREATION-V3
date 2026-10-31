@@ -3510,3 +3510,106 @@ body.catalog-details-open{overflow:hidden!important}
     text-align: center;
   }
 }
+
+/* ==========================================================
+   CART DRAWER SCROLL ARCHITECTURE FIX
+   Keep the heading outside the only scrollable content area.
+   This prevents checkout scrollIntoView calls from moving the
+   form above or behind the cart heading on mobile browsers.
+   ========================================================== */
+#cartDrawer[hidden] {
+  display: none !important;
+}
+#cartDrawer {
+  position: fixed !important;
+  inset: 0 0 0 auto !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-height: 100vh !important;
+  max-height: 100dvh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+#cartDrawer .cart-head {
+  position: relative !important;
+  top: auto !important;
+  z-index: 2 !important;
+  flex: 0 0 auto !important;
+  width: 100%;
+  background: #fff !important;
+}
+#cartDrawer .cart-content-scroll {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  scrollbar-gutter: stable;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+#cartDrawer #cartItems {
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+  overscroll-behavior: auto;
+}
+#cartDrawer #cartItems[hidden] {
+  display: none !important;
+}
+#cartDrawer #cartEmpty {
+  flex: 1 0 auto;
+}
+#cartDrawer #cartBottom {
+  flex: 0 0 auto !important;
+  overflow: visible !important;
+  padding-bottom: 14px !important;
+}
+#cartDrawer .customer-input {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+@media (max-width: 700px) {
+  #cartDrawer {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 0 !important;
+    padding-top: max(14px, env(safe-area-inset-top)) !important;
+    padding-right: 16px !important;
+    padding-bottom: 0 !important;
+    padding-left: 16px !important;
+  }
+  #cartDrawer .cart-head {
+    padding-bottom: 13px !important;
+    margin-bottom: 0;
+  }
+  #cartDrawer .cart-head h2 {
+    font-size: 24px !important;
+  }
+  #cartDrawer .cart-content-scroll {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+  #cartDrawer #cartItems {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  #cartDrawer #cartItems .cart-line {
+    padding: 12px 0 !important;
+  }
+}

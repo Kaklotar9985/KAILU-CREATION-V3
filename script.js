@@ -399,6 +399,7 @@ const searchInput = $("#searchInput");
 const categoryFilter = $("#categoryFilter");
 const sortSelect = $("#sortSelect");
 const cartDrawer = $("#cartDrawer");
+const cartContent = $("#cartContent");
 const overlay = $("#overlay");
 const cartItems = $("#cartItems");
 const cartEmpty = $("#cartEmpty");
@@ -407,6 +408,35 @@ const toast = $("#toast");
 let cart = {};
 const cartUnitSizes = {};
 let toastTimer;
+
+// Keep all cart content scrolling inside one dedicated viewport. The cart
+// heading is deliberately outside this scroller so it can never be displaced
+// or covered when checkout fields are brought into view.
+function scrollCartContentTo(target, { behavior = "smooth", block = "nearest" } = {}) {
+  if (!target || !cartContent || !cartContent.contains(target)) return;
+
+  const containerRect = cartContent.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const edgeGap = 12;
+  let delta = 0;
+
+  if (block === "start") {
+    delta = targetRect.top - containerRect.top - edgeGap;
+  } else if (block === "center") {
+    delta = targetRect.top - containerRect.top - (cartContent.clientHeight - targetRect.height) / 2;
+  } else if (block === "end") {
+    delta = targetRect.bottom - containerRect.top - cartContent.clientHeight + edgeGap;
+  } else if (targetRect.top < containerRect.top + edgeGap) {
+    delta = targetRect.top - containerRect.top - edgeGap;
+  } else if (targetRect.bottom > containerRect.bottom - edgeGap) {
+    delta = targetRect.bottom - containerRect.bottom + edgeGap;
+  }
+
+  if (Math.abs(delta) < 1) return;
+  const maxScrollTop = Math.max(0, cartContent.scrollHeight - cartContent.clientHeight);
+  const nextScrollTop = Math.max(0, Math.min(maxScrollTop, cartContent.scrollTop + delta));
+  cartContent.scrollTo({ top: nextScrollTop, behavior });
+}
 
 const money = (amount) => new Intl.NumberFormat("en-IN", {
   style: "currency", currency: CURRENCY, maximumFractionDigits: 2
@@ -661,7 +691,7 @@ function startSizeStep() {
   if (proceedButton) proceedButton.hidden = true;
   clearValidationHighlights();
   const firstProductSize = cartItems.querySelector(".cart-size-picker");
-  if (firstProductSize) firstProductSize.scrollIntoView({behavior:"smooth", block:"center"});
+  if (firstProductSize) scrollCartContentTo(firstProductSize, { behavior:"smooth", block:"center" });
 }
 
 function clearValidationHighlights() {
@@ -688,7 +718,7 @@ function highlightMissingFields() {
     missing.push(mobileField);
   }
   const first = missing.find(Boolean);
-  if (first) first.scrollIntoView({behavior:"smooth", block:"center"});
+  if (first) scrollCartContentTo(first, { behavior:"smooth", block:"center" });
   return missing;
 }
 
@@ -836,14 +866,21 @@ function openCart() {
   const wasHidden = cartDrawer.hidden;
   cartDrawer.hidden = false;
   overlay.hidden = false;
+  document.body.classList.add("cart-open");
   document.body.style.overflow = "hidden";
-  if (wasHidden) pushKailuUiHistory("cart");
+  if (wasHidden) {
+    // Every fresh opening starts at the top of the cart content, while the
+    // fixed drawer heading remains visible independently of this scroll area.
+    if (cartContent) cartContent.scrollTop = 0;
+    pushKailuUiHistory("cart");
+  }
   $("#closeCart").focus();
 }
 function closeCart(options = {}) {
   const wasOpen = !cartDrawer.hidden;
   cartDrawer.hidden = true;
   overlay.hidden = true;
+  document.body.classList.remove("cart-open");
   document.body.style.overflow = "";
   if (!options.skipHistory && !options.fromPopstate && wasOpen &&
       history.state && history.state.kailuUI === "cart") {
@@ -864,7 +901,7 @@ async function sendWhatsAppOrder() {
   const missingUnitSize = getCartUnits().find(unit => !unit.size);
   if (missingUnitSize) {
     const row = cartItems.querySelector(`[data-cart-product-id="${missingUnitSize.product.id}"][data-cart-unit-index="${missingUnitSize.unitIndex}"]`);
-    if (row) row.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (row) scrollCartContentTo(row, { behavior: "smooth", block: "center" });
     showToast(`Please select a size for every item. Missing size: ${missingUnitSize.product.name}.`);
     return;
   }
@@ -872,7 +909,7 @@ async function sendWhatsAppOrder() {
   if (!pincodeValidation.valid) {
     const pincodeField = $("#pincode");
     if (pincodeField) {
-      pincodeField.scrollIntoView({ behavior: "smooth", block: "center" });
+      scrollCartContentTo(pincodeField, { behavior: "smooth", block: "center" });
       pincodeField.focus({ preventScroll: true });
     }
     showToast(pincodeValidation.message);
@@ -2117,14 +2154,14 @@ if (continueToDetails) {
       const sizePicker = row && row.querySelector(".cart-size-picker");
       if (sizePicker) {
         sizePicker.classList.add("size-invalid");
-        sizePicker.scrollIntoView({behavior:"smooth", block:"center"});
+        scrollCartContentTo(sizePicker, { behavior:"smooth", block:"center" });
       } else if (row) {
-        row.scrollIntoView({behavior:"smooth", block:"center"});
+        scrollCartContentTo(row, { behavior:"smooth", block:"center" });
       }
       return;
     }
     $("#deliveryFields").hidden = false;
-    $("#deliveryFields").scrollIntoView({behavior:"smooth", block:"start"});
+    scrollCartContentTo($("#deliveryFields"), { behavior:"smooth", block:"start" });
     const firstField = $("#customerName");
     if (firstField) firstField.focus({preventScroll:true});
   });
@@ -2192,7 +2229,7 @@ if (proceedCheckout) {
     checkoutFields.hidden = false;
     checkoutFields.dataset.opened = "true";
     proceedCheckout.hidden = true;
-    checkoutFields.scrollIntoView({behavior: "smooth", block: "start"});
+    scrollCartContentTo(checkoutFields, { behavior: "smooth", block: "start" });
   });
 }
 $("#closeCart").addEventListener("click", closeCart);
