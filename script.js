@@ -6,6 +6,18 @@ const WHATSAPP_NUMBER = "918160621151"; // Optional WhatsApp fallback
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyIyoGbUmWSd3I164G45QWCnyz4FQcQiYgH5LMTnVYMg5DoH9dMh-6EljOoo4WqLmXSPw/exec";
 const CURRENCY = "INR";
 
+// Facebook/Instagram Android WebViews can expose a wider CSS viewport than
+// Chrome. Use the user agent as an additional signal so modal history is
+// always enabled in those in-app browsers.
+function shouldTrackCatalogDetailsHistory() {
+  const userAgent = navigator.userAgent || "";
+  const isAndroid = /Android/i.test(userAgent);
+  const isMetaInAppBrowser = /(FBAN|FBAV|FB_IAB|FB4A|Instagram)/i.test(userAgent);
+  const isNarrowViewport = typeof window.matchMedia === "function" &&
+    window.matchMedia("(max-width: 620px)").matches;
+  return isNarrowViewport || isAndroid || isMetaInAppBrowser;
+}
+
 // Branded, local fallback for missing product-photo URLs (no broken-image icon).
 const PHOTO_FALLBACK = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="900" viewBox="0 0 800 900"><rect width="800" height="900" fill="#f5f1e9"/><g fill="none" stroke="#b9c5bc" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><rect x="285" y="320" width="230" height="185" rx="18"/><circle cx="355" cy="375" r="22"/><path d="M300 475l65-65 54 48 38-35 43 52"/></g><text x="400" y="570" text-anchor="middle" font-family="Arial,sans-serif" font-size="25" fill="#315448">KAILU CREATION</text><text x="400" y="610" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" fill="#78877d">Photo unavailable</text></svg>'
@@ -831,14 +843,26 @@ function renderCart() {
   cartItems.scrollTop = previousScrollTop;
 }
 
+// A manual close calls history.back() only to remove that UI's own entry.
+// Its popstate must not be mistaken for a second user Back action on a parent UI.
+let kailuManualUiHistoryClosePending = false;
+let kailuUiHistorySequence = 0;
+
 // In-app browser Back behavior: keep Back inside the storefront when a UI panel is open.
 function pushKailuUiHistory(uiName) {
   const currentState = history.state && typeof history.state === "object" ? history.state : {};
-  history.pushState(
-    { ...currentState, kailuUI: uiName, kailuUiToken: Date.now() + Math.random() },
-    "",
-    window.location.href
-  );
+  if (currentState.kailuUI === uiName) return false;
+  try {
+    history.pushState(
+      { ...currentState, kailuUI: uiName, kailuUiToken: `kailu-${uiName}-${Date.now()}-${++kailuUiHistorySequence}` },
+      "",
+      window.location.href
+    );
+    return true;
+  } catch (error) {
+    console.warn(`KAILU: Could not add ${uiName} history entry.`, error);
+    return false;
+  }
 }
 
 function replaceKailuUiHistory(uiName) {
@@ -884,6 +908,7 @@ function closeCart(options = {}) {
   document.body.style.overflow = "";
   if (!options.skipHistory && !options.fromPopstate && wasOpen &&
       history.state && history.state.kailuUI === "cart") {
+    kailuManualUiHistoryClosePending = true;
     history.back();
   }
   if (!options.fromPopstate) $("#cartShortcut").focus();
@@ -1421,9 +1446,9 @@ function openCatalogDetails(id, options = {}) {
   const product = products.find(item => item.id === Number(id) || String(item.catalogId) === String(id));
   if (!product || !catalogDetailsModal) return;
 
-  // The requested Back interception is for the mobile layout only. Keep the
-  // existing desktop behavior, including the old shared-link history entry.
-  const isMobileCatalogViewport = window.matchMedia("(max-width: 620px)").matches;
+  // Track the details popup on narrow mobile screens and on Android / Meta
+  // in-app browsers even when their reported CSS viewport is wider than expected.
+  const isMobileCatalogViewport = shouldTrackCatalogDetailsHistory();
   const popupWasClosed = catalogDetailsModal.hidden;
   if (popupWasClosed) {
     if (catalogDetailsHistoryClosePending) {
@@ -2057,6 +2082,7 @@ function closePhotoLightbox(options = {}) {
   lightboxZoom = 1;
   document.body.classList.remove("photo-viewer-open");
   if (wasOpen && !options.fromPopstate && history.state && history.state.kailuUI === "photo") {
+    kailuManualUiHistoryClosePending = true;
     history.back();
   }
 }
@@ -2243,6 +2269,8 @@ document.addEventListener("keydown", event => {
 
 // Android/mobile browser Back: close the active UI and return to catalog instead of exiting.
 window.addEventListener("popstate", () => {
+  // A close button already hid this panel and called history.back() to remove
+  // its synthetic entry. Consume that event; do not close the panel underneath.
   if (catalogDetailsHistoryClosePending) {
     catalogDetailsHistoryClosePending = false;
     if (catalogDetailsPendingRestoreScroll) restoreCatalogDetailsScrollPosition();
@@ -2250,6 +2278,22 @@ window.addEventListener("popstate", () => {
     const afterClose = catalogDetailsAfterHistoryClose;
     catalogDetailsAfterHistoryClose = null;
     if (afterClose) afterClose();
+    return;
+  }
+  if (kailuManualUiHistoryClosePending) {
+    kailuManualUiHistoryClosePending = false;
+    return;
+  }
+
+  // Close exactly one top-most visible UI for each real browser Back action.
+  // The order follows the visual stacking order: success dialog, photo viewer,
+  // product details, then cart drawer.
+  const successModal = $("#orderSuccessModal");
+  if (successModal && !successModal.hidden) {
+    successModal.hidden = true;
+    document.body.classList.remove("success-modal-open");
+    closeCart({ skipHistory: true, fromPopstate: true });
+    scrollToCatalogList();
     return;
   }
 
@@ -2263,15 +2307,6 @@ window.addEventListener("popstate", () => {
     // Back already returned to the listing history entry. Close only the popup
     // and restore the catalog's previous scroll position; do not navigate again.
     closeCatalogDetails({ fromPopstate: true, skipHistory: true });
-    return;
-  }
-
-  const successModal = $("#orderSuccessModal");
-  if (successModal && !successModal.hidden) {
-    successModal.hidden = true;
-    document.body.classList.remove("success-modal-open");
-    closeCart({ skipHistory: true, fromPopstate: true });
-    scrollToCatalogList();
     return;
   }
 
@@ -2290,7 +2325,7 @@ const requestedCatalogId = new URLSearchParams(window.location.search).get("cata
 if (requestedCatalogId) {
   const linkedProduct = products.find(product => String(product.catalogId) === requestedCatalogId || String(product.id) === requestedCatalogId);
   if (linkedProduct) {
-    const isMobileCatalogViewport = window.matchMedia("(max-width: 620px)").matches;
+    const isMobileCatalogViewport = shouldTrackCatalogDetailsHistory();
     if (isMobileCatalogViewport) {
       // Make the original shared-link entry the clean catalog-list destination.
       // The popup itself gets a separate history entry when it opens below.
