@@ -2,7 +2,7 @@ const STORE_EMAIL = "kaklotar.brothers@gmail.com";
 const SHEET_ID = "1VAvTtSempaIT6DzJ54KADBzdRiJj-vbtiyFfzqc94xg";
 // This is the TAB name at the bottom of the spreadsheet, not the spreadsheet file name.
 const SHEET_NAME = "Kailu Creation Orders Detail";
-const REQUEST_LEDGER_SHEET_NAME = "_KAILU_Order_Request_Log";
+const ORDER_LEDGER_SHEET_NAME = "_KAILU_Order_Request_Log";
 
 // Required order layout: A:R (18 columns), in the exact order supplied.
 const HEADERS = [
@@ -14,13 +14,13 @@ const HEADERS = [
 function doGet(e) {
   const p = (e && e.parameter) ? e.parameter : {};
   const action = String(p.action || "");
-  const clientRequestId = String(p.clientRequestId || "").trim();
+  const verificationId = String(p.orderId || "").trim();
 
   // Both transports are read-only. JSONP is the primary path; verifyFrame is a
   // compatibility path for older mobile browsers that report script.onerror on
   // the Apps Script redirect.
-  if ((action === "verify" || action === "verifyFrame") && clientRequestId) {
-    const response = getOrderVerificationResult_(clientRequestId);
+  if ((action === "verify" || action === "verifyFrame") && verificationId) {
+    const response = getOrderVerificationResult_(verificationId);
 
     if (action === "verifyFrame") {
       const nonce = String(p.nonce || "");
@@ -30,7 +30,8 @@ function doGet(e) {
 
       const message = {
         type: "KAILU_ORDER_VERIFY_RESULT",
-        requestId: clientRequestId,
+        requestId: verificationId,
+        orderId: verificationId,
         nonce: nonce,
         result: response
       };
@@ -61,7 +62,7 @@ function doGet(e) {
   return ContentService.createTextOutput("KAILU CREATION order endpoint is running.");
 }
 
-function getOrderVerificationResult_(clientRequestId) {
+function getOrderVerificationResult_(orderId) {
   let response = {
     ok: false,
     pending: true,
@@ -69,7 +70,7 @@ function getOrderVerificationResult_(clientRequestId) {
     message: "Order save is not confirmed yet."
   };
   try {
-    const cachedResult = CacheService.getScriptCache().get(requestCacheKey_(clientRequestId));
+    const cachedResult = CacheService.getScriptCache().get(orderCacheKey_(orderId));
     if (cachedResult) {
       try { response = JSON.parse(cachedResult); }
       catch (_) { response = { ok: true, orderId: cachedResult }; }
@@ -78,7 +79,7 @@ function getOrderVerificationResult_(clientRequestId) {
     // CacheService can evict entries. The persistent ledger makes confirmation
     // and duplicate protection survive cache expiry and page reloads.
     if (!response || response.ok !== true) {
-      const ledgerResult = findRequestLedger_(clientRequestId);
+      const ledgerResult = findOrderLedger_(orderId);
       if (ledgerResult && ledgerResult.ok === true) response = ledgerResult;
     }
   } catch (verifyError) {
@@ -108,36 +109,40 @@ function setupOrdersSheet() {
     }
   }
   ensureOrderSchema_(sheet);
-  ensureRequestLedgerSheet_(ss);
-  return "Orders tab is ready with columns A:R (18 columns) and request verification ledger.";
+  ensureOrderLedgerSheet_(ss);
+  return "Orders tab is ready with columns A:R (18 columns) and order verification ledger.";
 }
 
 function doPost(e) {
   const lock = LockService.getScriptLock();
   let lockAcquired = false;
-  let requestIdForVerification = "";
+  let orderIdForVerification = "";
   try {
     lock.waitLock(15000);
     lockAcquired = true;
     const p = (e && e.parameter) ? e.parameter : {};
-    const clientRequestId = String(p.clientRequestId || "").trim();
-    requestIdForVerification = clientRequestId;
+    // One official Order ID is created in script.js and used in all systems.
+    const orderId = String(p.orderId || "").trim();
+    orderIdForVerification = orderId;
+    if (!/^KC-\d{8}-\d{6}-[A-F0-9]{6}$/.test(orderId)) {
+      return rejectOrder_(orderId, "Invalid or missing Order ID. Please refresh the page and try again.");
+    }
     const cache = CacheService.getScriptCache();
-    const cacheKey = clientRequestId ? requestCacheKey_(clientRequestId) : "";
+    const cacheKey = orderCacheKey_(orderId);
     const required = ["customerName", "mobileNumber", "size", "houseBuilding", "roadArea", "pincode", "city", "state", "total", "items"];
     const missing = required.filter(k => !String(p[k] || "").trim());
-    if (missing.length) return rejectOrder_(clientRequestId, "Missing fields: " + missing.join(", ") + ".");
-    if (!/^\d{6}$/.test(String(p.pincode).trim())) return rejectOrder_(clientRequestId, "Invalid pincode. Please enter a 6-digit PIN code.");
-    if (!/^[6-9]\d{9}$/.test(String(p.mobileNumber).trim())) return rejectOrder_(clientRequestId, "Invalid mobile number. Please enter a valid 10-digit Indian mobile number.");
+    if (missing.length) return rejectOrder_(orderId, "Missing fields: " + missing.join(", ") + ".");
+    if (!/^\d{6}$/.test(String(p.pincode).trim())) return rejectOrder_(orderId, "Invalid pincode. Please enter a 6-digit PIN code.");
+    if (!/^[6-9]\d{9}$/.test(String(p.mobileNumber).trim())) return rejectOrder_(orderId, "Invalid mobile number. Please enter a valid 10-digit Indian mobile number.");
     const total = Number(p.total);
-    if (!Number.isFinite(total) || total < 0) return rejectOrder_(clientRequestId, "Invalid order total.");
+    if (!Number.isFinite(total) || total < 0) return rejectOrder_(orderId, "Invalid order total.");
 
     let items;
     try { items = JSON.parse(p.items); }
-    catch (_) { return rejectOrder_(clientRequestId, "Order items could not be read. Please refresh and try again."); }
-    if (!Array.isArray(items) || !items.length) return rejectOrder_(clientRequestId, "No order items were provided.");
+    catch (_) { return rejectOrder_(orderId, "Order items could not be read. Please refresh and try again."); }
+    if (!Array.isArray(items) || !items.length) return rejectOrder_(orderId, "No order items were provided.");
 
-    // A retry with the same clientRequestId returns the original confirmed order,
+    // A retry with the same orderId returns the original confirmed order,
     // preventing duplicate rows when the browser loses a response after saving.
     if (cacheKey) {
       const priorResultText = cache.get(cacheKey);
@@ -150,7 +155,7 @@ function doPost(e) {
         // A cached failure is not a saved order; permit the customer to retry the same request ID.
         cache.remove(cacheKey);
       }
-      const ledgerPrior = findRequestLedger_(clientRequestId);
+      const ledgerPrior = findOrderLedger_(orderId);
       if (ledgerPrior && ledgerPrior.ok === true && ledgerPrior.orderId) {
         try { cache.put(cacheKey, JSON.stringify(ledgerPrior), 21600); } catch (_) {}
         return output_({ ok: true, orderId: ledgerPrior.orderId, duplicate: true });
@@ -158,7 +163,7 @@ function doPost(e) {
     }
 
     const now = new Date();
-    const orderId = "KC-" + Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyyMMdd-HHmmss") + "-" + Utilities.getUuid().slice(0, 6).toUpperCase();
+
     const itemSummary = items.map(item => {
       const name = item.productName || item.name || "Product";
       const sku = getItemSku_(item) || "SKU not provided";
@@ -230,7 +235,7 @@ function doPost(e) {
       const confirmed = { ok: true, orderId: orderId };
       try { cache.put(cacheKey, JSON.stringify(confirmed), 21600); }
       catch (cacheWriteError) { console.error("Order row saved, but its verification cache could not be written:", cacheWriteError); }
-      try { recordRequestLedger_(ss, clientRequestId, orderId, now); }
+      try { recordOrderLedger_(ss, orderId, orderId, now); }
       catch (ledgerError) {
         // Cache confirmation is already written; report this degradation in logs.
         console.error("Order row saved, but the persistent request ledger could not be updated:", ledgerError);
@@ -267,7 +272,7 @@ function doPost(e) {
   } catch (err) {
     console.error(err);
     const errorMessage = String(err && err.message ? err.message : err);
-    rememberRequestFailure_(requestIdForVerification, errorMessage);
+    rememberOrderFailure_(orderIdForVerification, errorMessage);
     return output_({ ok: false, message: errorMessage });
   } finally {
     if (lockAcquired) {
@@ -338,62 +343,68 @@ function ensureOrderSchema_(sheet) {
 
 // A separate hidden sheet stores idempotency keys without changing the public
 // 18-column Orders layout. This survives CacheService eviction and lost responses.
-function ensureRequestLedgerSheet_(ss) {
-  let ledger = ss.getSheetByName(REQUEST_LEDGER_SHEET_NAME);
+function ensureOrderLedgerSheet_(ss) {
+  let ledger = ss.getSheetByName(ORDER_LEDGER_SHEET_NAME);
   if (!ledger) {
-    ledger = ss.insertSheet(REQUEST_LEDGER_SHEET_NAME);
-    ledger.getRange(1, 1, 1, 3).setValues([["Client Request ID", "Order ID", "Saved At"]]);
+    ledger = ss.insertSheet(ORDER_LEDGER_SHEET_NAME);
+    ledger.getRange(1, 1, 1, 3).setValues([["Order ID", "Original Order ID", "Saved At"]]);
     ledger.setFrozenRows(1);
     ledger.hideSheet();
   } else if (ledger.getLastRow() === 0) {
-    ledger.getRange(1, 1, 1, 3).setValues([["Client Request ID", "Order ID", "Saved At"]]);
+    ledger.getRange(1, 1, 1, 3).setValues([["Order ID", "Original Order ID", "Saved At"]]);
     ledger.setFrozenRows(1);
     try { ledger.hideSheet(); } catch (_) {}
+  } else {
+    const firstHeader = String(ledger.getRange(1, 1).getDisplayValue() || "");
+    if (firstHeader === "Client Request ID" || firstHeader === "Order / Idempotency ID") {
+      ledger.getRange(1, 1).setValue("Order ID");
+    }
   }
   return ledger;
 }
 
-function findRequestLedger_(clientRequestId) {
-  const id = String(clientRequestId || "").trim();
+function findOrderLedger_(orderId) {
+  const id = String(orderId || "").trim();
   if (!id) return null;
   const ss = SpreadsheetApp.openById(SHEET_ID);
-  const ledger = ss.getSheetByName(REQUEST_LEDGER_SHEET_NAME);
+  const ledger = ss.getSheetByName(ORDER_LEDGER_SHEET_NAME);
   if (!ledger || ledger.getLastRow() < 2) return null;
   const match = ledger.getRange(2, 1, ledger.getLastRow() - 1, 1)
     .createTextFinder(id).matchEntireCell(true).findNext();
   if (!match) return null;
-  const orderId = String(ledger.getRange(match.getRow(), 2).getDisplayValue() || "").trim();
-  return orderId ? { ok: true, orderId: orderId, duplicate: true } : null;
+  const savedOrderId = String(ledger.getRange(match.getRow(), 2).getDisplayValue() || "").trim();
+  return savedOrderId ? { ok: true, orderId: savedOrderId, duplicate: true } : null;
 }
 
-function recordRequestLedger_(ss, clientRequestId, orderId, savedAt) {
-  const id = String(clientRequestId || "").trim();
-  if (!id || !orderId) return;
-  const ledger = ensureRequestLedgerSheet_(ss);
+function recordOrderLedger_(ss, orderId, savedOrderId, savedAt) {
+  const id = String(orderId || "").trim();
+  if (!id || !savedOrderId) return;
+  const ledger = ensureOrderLedgerSheet_(ss);
   const match = ledger.getLastRow() > 1
     ? ledger.getRange(2, 1, ledger.getLastRow() - 1, 1).createTextFinder(id).matchEntireCell(true).findNext()
     : null;
-  if (match) return; // Idempotent ledger write.
-  ledger.appendRow([id, orderId, savedAt || new Date()]);
+  if (match) return;
+  ledger.appendRow([id, savedOrderId, savedAt || new Date()]);
 }
 
-function rejectOrder_(clientRequestId, message) {
-  rememberRequestFailure_(clientRequestId, message);
+function rejectOrder_(orderId, message) {
+  rememberOrderFailure_(orderId, message);
   return output_({ ok: false, message: message });
 }
 
-function rememberRequestFailure_(clientRequestId, message) {
-  const id = String(clientRequestId || "").trim();
+function rememberOrderFailure_(orderId, message) {
+  const id = String(orderId || "").trim();
   if (!id) return;
   try {
-    CacheService.getScriptCache().put(requestCacheKey_(id), JSON.stringify({ ok: false, message: String(message || "Order could not be saved.") }), 600);
+    CacheService.getScriptCache().put(orderCacheKey_(id), JSON.stringify({ ok: false, message: String(message || "Order could not be saved.") }), 600);
   } catch (cacheError) {
     console.error("Could not cache the order failure for verification:", cacheError);
   }
 }
 
-function requestCacheKey_(clientRequestId) {
-  return "KC_REQ_" + Utilities.base64EncodeWebSafe(String(clientRequestId || "").trim()).replace(/=+$/g, "").slice(0, 180);
+function orderCacheKey_(orderId) {
+  const id = String(orderId || "").trim();
+  return "KC_ORDER_" + Utilities.base64EncodeWebSafe(id).replace(/=+$/g, "").slice(0, 180);
 }
 
 function getItemSku_(item) {
