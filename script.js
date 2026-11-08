@@ -1431,16 +1431,14 @@ async function sendWhatsAppOrder() {
       if (field) field.value = "";
     });
     $("#products").scrollIntoView({ behavior: "smooth", block: "start" });
-    const successModal = $("#orderSuccessModal");
-    if (successModal) {
-      const successBackDelta = getKailuHistoryState().catalogId !== undefined ? 3 : 2;
-      replaceKailuUiHistory("success", { kailuSuccessBackDelta: successBackDelta });
-      successModal.hidden = false;
-      document.body.classList.add("success-modal-open");
-      const continueButton = $("#continueShoppingSuccess");
-      if (continueButton) continueButton.focus({preventScroll:true});
-    } else {
-      showToast("Order request sent. Check your Google Sheet and email.");
+    if (!showKailuOrderSuccess(orderId)) {
+      const successModal = $("#orderSuccessModal");
+      if (!successModal) {
+        showToast("Your order request has been submitted successfully. Our team will contact you soon.");
+      } else if (hasShownKailuOrderSuccess(orderId)) {
+        // A previously confirmed Order ID must never display the same dialog twice.
+        showToast("This order has already been submitted successfully.");
+      }
     }
   } catch (error) {
     showToast("Could not send order. Check internet and try again.");
@@ -1454,11 +1452,67 @@ async function sendWhatsAppOrder() {
   }, 3500);
 }
 
-const continueShoppingSuccess = $("#continueShoppingSuccess");
-function returnToCatalogList() {
+// Keep one confirmed success dialog per Order ID in the current tab. The
+// server-side Order ID verification above is the only path that calls this.
+const KAILU_SUCCESS_SHOWN_PREFIX = "kailuOrderSuccessShownV1:";
+const kailuSuccessShownOrderIds = new Set();
+
+function hasShownKailuOrderSuccess(orderId) {
+  const key = String(orderId || "").trim();
+  if (!key) return true;
+  if (kailuSuccessShownOrderIds.has(key)) return true;
+  try {
+    return sessionStorage.getItem(`${KAILU_SUCCESS_SHOWN_PREFIX}${key}`) === "1";
+  } catch (error) {
+    return false;
+  }
+}
+
+function markKailuOrderSuccessShown(orderId) {
+  const key = String(orderId || "").trim();
+  if (!key) return;
+  kailuSuccessShownOrderIds.add(key);
+  try {
+    sessionStorage.setItem(`${KAILU_SUCCESS_SHOWN_PREFIX}${key}`, "1");
+  } catch (error) {
+    // The in-memory Set still prevents duplicate dialogs if storage is blocked.
+  }
+}
+
+function hideKailuOrderSuccess() {
   const successModal = $("#orderSuccessModal");
   if (successModal) successModal.hidden = true;
   document.body.classList.remove("success-modal-open");
+}
+
+function showKailuOrderSuccess(orderId) {
+  const confirmedOrderId = String(orderId || "").trim();
+  const successModal = $("#orderSuccessModal");
+  if (!confirmedOrderId || !successModal || !successModal.hidden || hasShownKailuOrderSuccess(confirmedOrderId)) {
+    return false;
+  }
+
+  const successBackDelta = getKailuHistoryState().catalogId !== undefined ? 3 : 2;
+  replaceKailuUiHistory("success", {
+    kailuSuccessBackDelta: successBackDelta,
+    kailuSuccessOrderId: confirmedOrderId
+  });
+  successModal.dataset.orderId = confirmedOrderId;
+  successModal.hidden = false;
+  document.body.classList.add("success-modal-open");
+  markKailuOrderSuccessShown(confirmedOrderId);
+
+  const continueButton = $("#continueShoppingSuccess");
+  if (continueButton) continueButton.focus({ preventScroll: true });
+  return true;
+}
+
+const continueShoppingSuccess = $("#continueShoppingSuccess");
+function returnToCatalogList() {
+  const successModal = $("#orderSuccessModal");
+  if (!successModal || successModal.hidden || kailuSuccessReturnInProgress) return;
+
+  hideKailuOrderSuccess();
   closeCart({ skipHistory: true });
 
   const catalogSection = $("#products");
@@ -2644,13 +2698,13 @@ function handleKailuPopstate() {
   hideKailuExitConfirmation();
 
   if (previousState.kailuUI === "success") {
+    // Close the dialog immediately on the first system/browser Back press.
+    // The completed Cart/Checkout states are then skipped to the catalog.
+    hideKailuOrderSuccess();
     if (kailuSuccessReturnInProgress) {
       kailuSuccessReturnInProgress = false;
     } else {
       const successBackDelta = Math.max(2, Number(previousState.kailuSuccessBackDelta) || 2);
-      // A physical Back first leaves the success state. Skip the remaining
-      // completed UI entries so the shopper returns to the catalog, not an
-      // already-submitted Cart or Checkout drawer.
       history.go(-(successBackDelta - 1));
       return;
     }
@@ -2671,9 +2725,7 @@ function handleKailuPopstate() {
     if (catalogDetailsModal && !catalogDetailsModal.hidden) closeCatalogDetails({ skipHistory: true, fromPopstate: true });
     const photoLightbox = $("#photoLightbox");
     if (photoLightbox && !photoLightbox.hidden) closePhotoLightbox({ fromPopstate: true });
-    const successModal = $("#orderSuccessModal");
-    if (successModal) successModal.hidden = true;
-    document.body.classList.remove("success-modal-open");
+    hideKailuOrderSuccess();
     resetKailuCheckoutStep();
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
@@ -2702,8 +2754,7 @@ function handleKailuPopstate() {
     closeCatalogDetails({ skipHistory: true, fromPopstate: true });
   }
   if (nextUi !== "success" && successModal && !successModal.hidden) {
-    successModal.hidden = true;
-    document.body.classList.remove("success-modal-open");
+    hideKailuOrderSuccess();
   }
 
   if (nextUi === "shop") {
