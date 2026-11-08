@@ -36,7 +36,7 @@
   <link rel="icon" type="image/png" href="images/kailu-logo-mark-tm.webp">
   <meta property="og:title" content="KAILU CREATION™ | Your Style, Our Creation">
   <meta property="og:image" content="images/kailu-logo-transparent-tm.webp">
-  <link rel="stylesheet" href="style.css?v=20261031-cart-drawer-scroll-fix">
+  <link rel="stylesheet" href="style.css?v=20261108-android-back-navigation">
 </head>
 
   
@@ -286,9 +286,22 @@
       <button id="photoLightboxZoomReset" type="button" aria-label="Reset zoom" title="Reset zoom">Reset</button>
     </div>
   </div>
+  <div id="exitConfirmationModal" class="exit-confirm-modal" hidden role="alertdialog" aria-modal="true" aria-labelledby="exitConfirmationTitle" aria-describedby="exitConfirmationMessage">
+    <div class="exit-confirm-backdrop" aria-hidden="true"></div>
+    <section class="exit-confirm-card">
+      <span class="exit-confirm-mark" aria-hidden="true">KC</span>
+      <p class="exit-confirm-eyebrow">THANK YOU FOR VISITING</p>
+      <h2 id="exitConfirmationTitle">Exit KAILU CREATION?</h2>
+      <p id="exitConfirmationMessage">Are you sure you want to exit KAILU CREATION?</p>
+      <div class="exit-confirm-actions">
+        <button id="stayOnWebsite" class="exit-stay-button" type="button">Stay on Website</button>
+        <button id="exitWebsite" class="exit-leave-button" type="button">Exit Website</button>
+      </div>
+    </section>
+  </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="pincode-serviceability.js"></script>
   <script src="products-data.js?v=20261029-video-icon-fix"></script>
-  <script src="script.js?v=20261105-meta-catalog-match-v2"></script>
+  <script src="script.js?v=20261108-android-back-navigation"></script>
 </body>
 </html>

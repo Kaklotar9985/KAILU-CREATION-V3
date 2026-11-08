@@ -3613,3 +3613,104 @@ body.catalog-details-open{overflow:hidden!important}
     padding: 12px 0 !important;
   }
 }
+
+
+/* KAILU CREATION — branded Home exit confirmation */
+.exit-confirm-modal[hidden] { display: none !important; }
+.exit-confirm-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+.exit-confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 25, 19, .72);
+  backdrop-filter: blur(5px);
+}
+.exit-confirm-card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 410px);
+  padding: 34px 30px 28px;
+  border: 1px solid rgba(191, 145, 74, .42);
+  border-radius: 18px;
+  background: linear-gradient(155deg, #fffefa 0%, #f7f2e8 100%);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .28);
+  text-align: center;
+  animation: kailu-exit-pop .2s ease-out;
+}
+.exit-confirm-mark {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 14px;
+  border: 1px solid #c7a36b;
+  border-radius: 14px 14px 14px 4px;
+  color: #123e32;
+  font-family: Georgia, serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  background: #fff;
+}
+.exit-confirm-eyebrow {
+  margin: 0 0 9px;
+  color: #99733d;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+.exit-confirm-card h2 {
+  margin: 0 0 10px;
+  color: #123e32;
+  font-family: Georgia, "Playfair Display", serif;
+  font-size: clamp(22px, 5vw, 27px);
+  line-height: 1.2;
+}
+.exit-confirm-card > p:last-of-type {
+  margin: 0;
+  color: #626b65;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.exit-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 24px;
+}
+.exit-confirm-actions button {
+  min-height: 46px;
+  padding: 11px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.exit-confirm-actions button:active { transform: scale(.98); }
+.exit-stay-button {
+  border: 1px solid #123e32;
+  background: #123e32;
+  color: #fff;
+}
+.exit-leave-button {
+  border: 1px solid #d9d0c0;
+  background: #fff;
+  color: #665f54;
+}
+body.exit-confirm-open { overflow: hidden !important; }
+@keyframes kailu-exit-pop {
+  from { opacity: 0; transform: translateY(9px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (max-width: 420px) {
+  .exit-confirm-card { padding: 29px 20px 22px; border-radius: 15px; }
+  .exit-confirm-actions { grid-template-columns: 1fr; }
+}

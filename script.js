@@ -7,18 +7,6 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjR5_zf_oW4g
 //"https://script.google.com/macros/s/AKfycbyIyoGbUmWSd3I164G45QWCnyz4FQcQiYgH5LMTnVYMg5DoH9dMh-6EljOoo4WqLmXSPw/exec";
 const CURRENCY = "INR";
 
-// Facebook/Instagram Android WebViews can expose a wider CSS viewport than
-// Chrome. Use the user agent as an additional signal so modal history is
-// always enabled in those in-app browsers.
-function shouldTrackCatalogDetailsHistory() {
-  const userAgent = navigator.userAgent || "";
-  const isAndroid = /Android/i.test(userAgent);
-  const isMetaInAppBrowser = /(FBAN|FBAV|FB_IAB|FB4A|Instagram)/i.test(userAgent);
-  const isNarrowViewport = typeof window.matchMedia === "function" &&
-    window.matchMedia("(max-width: 620px)").matches;
-  return isNarrowViewport || isAndroid || isMetaInAppBrowser;
-}
-
 // Branded, local fallback for missing product-photo URLs (no broken-image icon).
 const PHOTO_FALLBACK = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="900" viewBox="0 0 800 900"><rect width="800" height="900" fill="#f5f1e9"/><g fill="none" stroke="#b9c5bc" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><rect x="285" y="320" width="230" height="185" rx="18"/><circle cx="355" cy="375" r="22"/><path d="M300 475l65-65 54 48 38-35 43 52"/></g><text x="400" y="570" text-anchor="middle" font-family="Arial,sans-serif" font-size="25" fill="#315448">KAILU CREATION</text><text x="400" y="610" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" fill="#78877d">Photo unavailable</text></svg>'
@@ -702,20 +690,10 @@ function buyNow(id, selectedSize = "", quantity = 1) {
 }
 
 function startSizeStep() {
-  // Buy Now opens the checkout flow directly, so track it here as well.
-  trackMetaInitiateCheckout();
-  const checkoutFields = $("#checkoutFields");
-  const deliveryFields = $("#deliveryFields");
-  const proceedButton = $("#proceedCheckout");
-  if (checkoutFields) {
-    checkoutFields.hidden = false;
-    checkoutFields.dataset.opened = "true";
-  }
-  if (deliveryFields) deliveryFields.hidden = true;
-  if (proceedButton) proceedButton.hidden = true;
   clearValidationHighlights();
+  showKailuCheckoutStep({ pushHistory: true, trackMeta: true, scroll: false });
   const firstProductSize = cartItems.querySelector(".cart-size-picker");
-  if (firstProductSize) scrollCartContentTo(firstProductSize, { behavior:"smooth", block:"center" });
+  if (firstProductSize) scrollCartContentTo(firstProductSize, { behavior: "smooth", block: "center" });
 }
 
 function clearValidationHighlights() {
@@ -855,21 +833,46 @@ function renderCart() {
   cartItems.scrollTop = previousScrollTop;
 }
 
-// A manual close calls history.back() only to remove that UI's own entry.
-// Its popstate must not be mistaken for a second user Back action on a parent UI.
-let kailuManualUiHistoryClosePending = false;
+// Centralized storefront navigation state. Every visible navigation layer gets
+// one same-document History API entry, so system Back closes only the top layer.
 let kailuUiHistorySequence = 0;
+let kailuLastHistoryState = null;
 
-// In-app browser Back behavior: keep Back inside the storefront when a UI panel is open.
-function pushKailuUiHistory(uiName) {
-  const currentState = history.state && typeof history.state === "object" ? history.state : {};
-  if (currentState.kailuUI === uiName) return false;
+function getKailuHistoryState() {
+  return history.state && typeof history.state === "object" ? history.state : {};
+}
+
+function setKailuHistoryState(state, url = window.location.href) {
   try {
-    history.pushState(
-      { ...currentState, kailuUI: uiName, kailuUiToken: `kailu-${uiName}-${Date.now()}-${++kailuUiHistorySequence}` },
-      "",
-      window.location.href
-    );
+    history.replaceState(state, "", url);
+    kailuLastHistoryState = history.state;
+    return true;
+  } catch (error) {
+    console.warn("KAILU: Could not replace navigation history state.", error);
+    return false;
+  }
+}
+
+function pushKailuUiHistory(uiName, extraState = {}, url = window.location.href) {
+  const currentState = getKailuHistoryState();
+  const nextState = {
+    ...currentState,
+    kailuApp: true,
+    kailuUI: uiName,
+    kailuBase: false,
+    kailuExitGuard: false,
+    kailuUiToken: `kailu-${uiName}-${Date.now()}-${++kailuUiHistorySequence}`,
+    ...extraState
+  };
+
+  // Re-opening the same UI must not create duplicate history entries.
+  if (currentState.kailuApp === true && currentState.kailuUI === uiName) {
+    return setKailuHistoryState({ ...currentState, ...extraState }, url) ? false : false;
+  }
+
+  try {
+    history.pushState(nextState, "", url);
+    kailuLastHistoryState = history.state;
     return true;
   } catch (error) {
     console.warn(`KAILU: Could not add ${uiName} history entry.`, error);
@@ -877,51 +880,215 @@ function pushKailuUiHistory(uiName) {
   }
 }
 
-function replaceKailuUiHistory(uiName) {
-  const currentState = history.state && typeof history.state === "object" ? { ...history.state } : {};
+function replaceKailuUiHistory(uiName, extraState = {}, url = window.location.href) {
+  const currentState = getKailuHistoryState();
+  const nextState = { ...currentState, ...extraState, kailuApp: true };
   if (uiName) {
-    currentState.kailuUI = uiName;
-    currentState.kailuUiToken = Date.now();
+    nextState.kailuUI = uiName;
+    nextState.kailuUiToken = `kailu-${uiName}-${Date.now()}-${++kailuUiHistorySequence}`;
   } else {
-    delete currentState.kailuUI;
-    delete currentState.kailuUiToken;
+    delete nextState.kailuUI;
+    delete nextState.kailuUiToken;
   }
-  const nextUrl = `${window.location.pathname}${window.location.search}#products`;
-  history.replaceState(currentState, "", nextUrl);
+  return setKailuHistoryState(nextState, url);
+}
+
+function initializeKailuHistory() {
+  const currentState = getKailuHistoryState();
+  if (currentState.kailuApp === true) {
+    kailuLastHistoryState = currentState;
+    // A page reload can restore the base Home entry without its guard.
+    // Re-arm it so the first Android/browser Back still shows Exit confirmation.
+    if (currentState.kailuUI === "home" && currentState.kailuExitGuard !== true) {
+      const guardState = {
+        ...currentState,
+        kailuBase: false,
+        kailuExitGuard: true,
+        kailuExitBackDelta: 2,
+        kailuUiToken: `kailu-home-guard-${Date.now()}-${++kailuUiHistorySequence}`
+      };
+      try {
+        history.pushState(guardState, "", window.location.href);
+        kailuLastHistoryState = history.state;
+      } catch (error) {
+        console.warn("KAILU: Could not restore the Home exit guard.", error);
+      }
+    }
+    return;
+  }
+
+  const currentUrl = new URL(window.location.href);
+  const startInShop = currentUrl.hash === "#products" || currentUrl.searchParams.has("catalog");
+  const baseUrl = new URL(currentUrl.href);
+  baseUrl.hash = "";
+  const baseState = {
+    ...currentState,
+    kailuApp: true,
+    kailuUI: "home",
+    kailuBase: true,
+    kailuExitGuard: false,
+    kailuUiToken: `kailu-home-base-${Date.now()}`
+  };
+
+  try {
+    history.replaceState(baseState, "", `${baseUrl.pathname}${baseUrl.search}`);
+    if (startInShop) {
+      const shopState = {
+        ...baseState,
+        kailuUI: "shop",
+        kailuBase: false,
+        kailuSection: "products",
+        kailuUiToken: `kailu-shop-${Date.now()}`
+      };
+      history.pushState(shopState, "", `${baseUrl.pathname}${baseUrl.search}#products`);
+    } else {
+      const guardState = {
+        ...baseState,
+        kailuExitGuard: true,
+        kailuExitBackDelta: 2,
+        kailuUiToken: `kailu-home-guard-${Date.now()}`
+      };
+      history.pushState(guardState, "", `${baseUrl.pathname}${baseUrl.search}`);
+    }
+    kailuLastHistoryState = history.state;
+  } catch (error) {
+    console.warn("KAILU: Browser history initialization was limited.", error);
+    kailuLastHistoryState = history.state || baseState;
+  }
+}
+
+initializeKailuHistory();
+
+function ensureKailuHomeExitGuard(backDelta = 2) {
+  const currentState = getKailuHistoryState();
+  if (currentState.kailuApp === true && currentState.kailuUI === "home" && currentState.kailuExitGuard === true) {
+    return currentState;
+  }
+  const guardState = {
+    ...currentState,
+    kailuApp: true,
+    kailuUI: "home",
+    kailuBase: false,
+    kailuExitGuard: true,
+    kailuExitBackDelta: backDelta,
+    kailuUiToken: `kailu-home-guard-${Date.now()}-${++kailuUiHistorySequence}`
+  };
+  try {
+    history.pushState(guardState, "", window.location.href);
+    kailuLastHistoryState = history.state;
+    return history.state;
+  } catch (error) {
+    console.warn("KAILU: Could not add the Home exit guard.", error);
+    return currentState;
+  }
+}
+
+function navigateToKailuShop() {
+  const currentState = getKailuHistoryState();
+  const nextUrl = new URL(window.location.href);
+  nextUrl.hash = "products";
+  const url = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+
+  // An Add-to-Cart action can visually close Details while deliberately
+  // retaining its history entry, allowing Cart Back to restore that Details UI.
+  // Starting a different navigation from that hidden state resets it to Shop.
+  if (currentState.kailuUI === "catalog-details" && catalogDetailsModal?.hidden) {
+    replaceKailuUiHistory("shop", { kailuSection: "products", catalogId: undefined, catalogScrollY: undefined }, url);
+  } else if (currentState.kailuUI !== "shop") {
+    pushKailuUiHistory("shop", { kailuSection: "products" }, url);
+  } else {
+    replaceKailuUiHistory("shop", { kailuSection: "products" }, url);
+  }
+
+  const section = $("#products");
+  if (section) section.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function navigateToKailuHome() {
+  const nextUrl = new URL(window.location.href);
+  nextUrl.hash = "";
+  const currentState = getKailuHistoryState();
+  const homeState = {
+    ...currentState,
+    kailuApp: true,
+    kailuUI: "home",
+    kailuBase: false,
+    kailuExitGuard: true,
+    kailuExitBackDelta: 2,
+    kailuUiToken: `kailu-home-guard-${Date.now()}-${++kailuUiHistorySequence}`
+  };
+  try {
+    history.replaceState(homeState, "", `${nextUrl.pathname}${nextUrl.search}`);
+    kailuLastHistoryState = history.state;
+  } catch (error) {
+    console.warn("KAILU: Could not update the Home URL.", error);
+  }
+  const section = $("#home");
+  if (section) window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function scrollToCatalogList() {
   const catalogSection = $("#products");
-  replaceKailuUiHistory(null);
-  if (catalogSection) {
-    catalogSection.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  const nextUrl = new URL(window.location.href);
+  nextUrl.hash = "products";
+  replaceKailuUiHistory("shop", { kailuSection: "products" }, `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+  if (catalogSection) catalogSection.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function openCart() {
+function resetKailuCheckoutStep() {
+  const checkoutFields = $("#checkoutFields");
+  const deliveryFields = $("#deliveryFields");
+  const proceedButton = $("#proceedCheckout");
+  if (checkoutFields) {
+    checkoutFields.hidden = true;
+    checkoutFields.dataset.opened = "false";
+  }
+  if (deliveryFields) deliveryFields.hidden = true;
+  if (proceedButton) proceedButton.hidden = getCartUnits().length === 0;
+}
+
+function showKailuCheckoutStep(options = {}) {
+  const checkoutFields = $("#checkoutFields");
+  const deliveryFields = $("#deliveryFields");
+  const proceedButton = $("#proceedCheckout");
+  if (!checkoutFields) return;
+  if (options.pushHistory !== false) pushKailuUiHistory("checkout", { kailuCheckoutStep: "buy-now" });
+  checkoutFields.hidden = false;
+  checkoutFields.dataset.opened = "true";
+  if (deliveryFields) deliveryFields.hidden = true;
+  if (proceedButton) proceedButton.hidden = true;
+  if (options.trackMeta === true) trackMetaInitiateCheckout();
+  if (options.scroll !== false) scrollCartContentTo(checkoutFields, { behavior: "smooth", block: "start" });
+}
+
+function openCart(options = {}) {
   const wasHidden = cartDrawer.hidden;
   cartDrawer.hidden = false;
   overlay.hidden = false;
   document.body.classList.add("cart-open");
   document.body.style.overflow = "hidden";
   if (wasHidden) {
-    // Every fresh opening starts at the top of the cart content, while the
-    // fixed drawer heading remains visible independently of this scroll area.
     if (cartContent) cartContent.scrollTop = 0;
-    pushKailuUiHistory("cart");
+    if (options.fromHistory !== true) pushKailuUiHistory("cart");
   }
-  $("#closeCart").focus();
+  if (!options.fromHistory) $("#closeCart").focus();
 }
+
 function closeCart(options = {}) {
   const wasOpen = !cartDrawer.hidden;
   cartDrawer.hidden = true;
   overlay.hidden = true;
   document.body.classList.remove("cart-open");
   document.body.style.overflow = "";
-  if (!options.skipHistory && !options.fromPopstate && wasOpen &&
-      history.state && history.state.kailuUI === "cart") {
-    kailuManualUiHistoryClosePending = true;
-    history.back();
+  if (!options.skipHistory && !options.fromPopstate && wasOpen) {
+    const currentState = getKailuHistoryState();
+    if (currentState.kailuUI === "checkout") {
+      // Checkout and Cart are two nested UI states. Closing the drawer removes
+      // both so the previous Details/Shop screen becomes active again.
+      history.go(-2);
+    } else if (currentState.kailuUI === "cart") {
+      history.back();
+    }
   }
   if (!options.fromPopstate) $("#cartShortcut").focus();
 }
@@ -1266,7 +1433,8 @@ async function sendWhatsAppOrder() {
     $("#products").scrollIntoView({ behavior: "smooth", block: "start" });
     const successModal = $("#orderSuccessModal");
     if (successModal) {
-      replaceKailuUiHistory("success");
+      const successBackDelta = getKailuHistoryState().catalogId !== undefined ? 3 : 2;
+      replaceKailuUiHistory("success", { kailuSuccessBackDelta: successBackDelta });
       successModal.hidden = false;
       document.body.classList.add("success-modal-open");
       const continueButton = $("#continueShoppingSuccess");
@@ -1293,12 +1461,13 @@ function returnToCatalogList() {
   document.body.classList.remove("success-modal-open");
   closeCart({ skipHistory: true });
 
-  // Clear the in-app UI history marker and move the actual page to Shop Catalogs.
   const catalogSection = $("#products");
-  replaceKailuUiHistory(null);
+  const successBackDelta = Math.max(2, Number(getKailuHistoryState().kailuSuccessBackDelta) || 2);
+  kailuSuccessReturnInProgress = true;
   if (catalogSection) {
     window.scrollTo({ top: Math.max(0, catalogSection.getBoundingClientRect().top + window.scrollY - 12), behavior: "smooth" });
   }
+  history.go(-successBackDelta);
 }
 if (continueShoppingSuccess) {
   continueShoppingSuccess.addEventListener("click", returnToCatalogList);
@@ -1327,11 +1496,7 @@ const detailProductVideo = $("#detailProductVideo");
 let catalogDetailsHistoryToken = null;
 let catalogDetailsHistoryEntryActive = false;
 let catalogDetailsSavedScrollY = 0;
-let catalogDetailsHistoryClosePending = false;
-let catalogDetailsPendingRestoreScroll = false;
-let catalogDetailsShouldRestoreScroll = false;
-let catalogDetailsAfterHistoryClose = null;
-let catalogDetailsHistorySequence = 0;
+let catalogDetailsShouldRestoreScroll = true;
 
 function restoreCatalogDetailsScrollPosition() {
   const savedY = Math.max(0, Number(catalogDetailsSavedScrollY) || 0);
@@ -1661,70 +1826,42 @@ function openCatalogDetails(id, options = {}) {
   const product = products.find(item => item.id === Number(id) || String(item.catalogId) === String(id));
   if (!product || !catalogDetailsModal) return;
 
-  // Track the details popup on narrow mobile screens and on Android / Meta
-  // in-app browsers even when their reported CSS viewport is wider than expected.
-  const isMobileCatalogViewport = shouldTrackCatalogDetailsHistory();
   const popupWasClosed = catalogDetailsModal.hidden;
   if (popupWasClosed) {
-    if (catalogDetailsHistoryClosePending) {
-      // If a user taps another catalog during the tiny close/back transition,
-      // open it only after the previous modal history entry has been removed.
-      if (!catalogDetailsAfterHistoryClose) {
-        catalogDetailsAfterHistoryClose = () => openCatalogDetails(id, options);
-      }
-      return;
-    }
-
-    catalogDetailsSavedScrollY = window.scrollY || window.pageYOffset || 0;
-    catalogDetailsShouldRestoreScroll = isMobileCatalogViewport;
-    catalogDetailsAfterHistoryClose = null;
-
-    const currentState = history.state && typeof history.state === "object" ? { ...history.state } : {};
-    const hasExistingCatalogModalEntry = currentState.kailuUI === "catalog-details" || currentState.kailuUI === "shared-catalog";
-    const shouldTrackHistory = isMobileCatalogViewport || options.trackHistory === true || hasExistingCatalogModalEntry;
-    if (shouldTrackHistory && hasExistingCatalogModalEntry) {
-      // Adopt a legacy shared-catalog entry when a page is restored from an
-      // older session; do not add a duplicate modal entry.
-      catalogDetailsHistoryToken = currentState.kailuUiToken || currentState.catalogDetailsToken || null;
-      catalogDetailsHistoryEntryActive = true;
-      if (isMobileCatalogViewport && currentState.kailuUI !== "catalog-details") {
-        currentState.kailuUI = "catalog-details";
-        currentState.kailuUiToken = catalogDetailsHistoryToken || `catalog-details-${Date.now()}-${++catalogDetailsHistorySequence}`;
-        currentState.catalogId = catalogWishlistKey(product);
-        history.replaceState(currentState, "", window.location.href);
-        catalogDetailsHistoryToken = currentState.kailuUiToken;
-      }
-    } else if (shouldTrackHistory) {
-      catalogDetailsHistoryToken = `catalog-details-${Date.now()}-${++catalogDetailsHistorySequence}`;
-      catalogDetailsHistoryEntryActive = true;
-      history.pushState(
-        {
-          ...currentState,
-          kailuUI: options.trackHistory === true && !isMobileCatalogViewport ? "shared-catalog" : "catalog-details",
-          kailuUiToken: catalogDetailsHistoryToken,
-          catalogId: catalogWishlistKey(product),
-          catalogScrollY: catalogDetailsSavedScrollY
-        },
-        "",
-        window.location.href
-      );
+    const currentState = getKailuHistoryState();
+    if (options.fromHistory === true) {
+      catalogDetailsSavedScrollY = Math.max(0, Number(currentState.catalogScrollY) || window.scrollY || 0);
+      catalogDetailsHistoryToken = currentState.kailuUiToken || null;
+      catalogDetailsHistoryEntryActive = currentState.kailuUI === "catalog-details";
+      catalogDetailsShouldRestoreScroll = true;
     } else {
-      // Desktop More Details has no modal history entry, matching the existing
-      // desktop navigation behavior.
-      catalogDetailsHistoryToken = null;
-      catalogDetailsHistoryEntryActive = false;
+      // Replace a visually closed Details entry left by Add-to-Cart before
+      // opening a different product; it must not become a stale intermediate UI.
+      if (currentState.kailuUI === "catalog-details") {
+        const shopUrl = new URL(window.location.href);
+        shopUrl.hash = "products";
+        replaceKailuUiHistory("shop", { catalogId: undefined, catalogScrollY: undefined }, `${shopUrl.pathname}${shopUrl.search}${shopUrl.hash}`);
+      }
+
+      catalogDetailsSavedScrollY = window.scrollY || window.pageYOffset || 0;
+      catalogDetailsShouldRestoreScroll = true;
+      catalogDetailsHistoryToken = `catalog-details-${Date.now()}-${++kailuUiHistorySequence}`;
+      catalogDetailsHistoryEntryActive = pushKailuUiHistory("catalog-details", {
+        catalogId: catalogWishlistKey(product),
+        catalogScrollY: catalogDetailsSavedScrollY
+      });
+      catalogDetailsHistoryToken = getKailuHistoryState().kailuUiToken || catalogDetailsHistoryToken;
     }
   }
 
   setActiveCatalogProduct(product);
-  // Meta Pixel: send the exact Catalogue product ID for this item.
+  // Meta Pixel: send the exact Catalogue product ID used by the product feed.
   if (typeof window.fbq === "function") {
     window.fbq("track", "ViewContent", buildMetaCatalogParams([
       { product, quantity: 1 }
     ]));
   }
 
-  
   catalogDetailsModal.hidden = false;
   document.body.classList.add("catalog-details-open");
   $("#closeCatalogDetails").focus();
@@ -1733,9 +1870,9 @@ function openCatalogDetails(id, options = {}) {
 function closeCatalogDetails(options = {}) {
   if (!catalogDetailsModal || catalogDetailsModal.hidden) return;
 
-  const currentState = history.state && typeof history.state === "object" ? history.state : {};
+  const currentState = getKailuHistoryState();
   const isOwnModalHistoryEntry = catalogDetailsHistoryEntryActive &&
-    (currentState.kailuUI === "catalog-details" || currentState.kailuUI === "shared-catalog") &&
+    currentState.kailuUI === "catalog-details" &&
     (!catalogDetailsHistoryToken || !currentState.kailuUiToken || currentState.kailuUiToken === catalogDetailsHistoryToken);
 
   catalogDetailsModal.hidden = true;
@@ -1751,16 +1888,9 @@ function closeCatalogDetails(options = {}) {
   catalogDetailsShouldRestoreScroll = false;
 
   if (!options.skipHistory && !options.fromPopstate && isOwnModalHistoryEntry) {
-    catalogDetailsPendingRestoreScroll = shouldRestoreScroll;
-    // Pop the modal entry so the next Back press performs normal browser
-    // navigation. Defer any follow-on action (for example Buy Now -> cart)
-    // until this history traversal has completed.
-    catalogDetailsHistoryClosePending = true;
-    catalogDetailsAfterHistoryClose = typeof options.afterHistory === "function" ? options.afterHistory : null;
     history.back();
-  } else {
-    if (shouldRestoreScroll) restoreCatalogDetailsScrollPosition();
-    if (typeof options.afterHistory === "function") options.afterHistory();
+  } else if (shouldRestoreScroll && options.restoreScroll !== false) {
+    restoreCatalogDetailsScrollPosition();
   }
 }
 
@@ -1802,7 +1932,7 @@ catalogDetailsModal.addEventListener("click", event => {
       return;
     }
     for (let i = 0; i < catalogQuantity; i += 1) addToCart(activeCatalogProduct.id, selectedCatalogSize);
-    closeCatalogDetails();
+    closeCatalogDetails({ skipHistory: true });
     return;
   }
   const buyButton = target && target.closest("[data-detail-buy]");
@@ -1811,7 +1941,8 @@ catalogDetailsModal.addEventListener("click", event => {
     const productId = activeCatalogProduct.id;
     const size = selectedCatalogSize;
     const qty = catalogQuantity;
-    closeCatalogDetails({ afterHistory: () => buyNow(productId, size, qty) });
+    closeCatalogDetails({ skipHistory: true });
+    buyNow(productId, size, qty);
   }
 });
 
@@ -2304,8 +2435,7 @@ function closePhotoLightbox(options = {}) {
   lightboxPanY = 0;
   lightboxZoom = 1;
   document.body.classList.remove("photo-viewer-open");
-  if (wasOpen && !options.fromPopstate && history.state && history.state.kailuUI === "photo") {
-    kailuManualUiHistoryClosePending = true;
+  if (wasOpen && !options.fromPopstate && getKailuHistoryState().kailuUI === "photo") {
     history.back();
   }
 }
@@ -2474,13 +2604,8 @@ if (wishlistShortcut) {
 const proceedCheckout = $("#proceedCheckout");
 if (proceedCheckout) {
   proceedCheckout.addEventListener("click", () => {
-    const checkoutFields = $("#checkoutFields");
-    checkoutFields.hidden = false;
-    checkoutFields.dataset.opened = "true";
-    proceedCheckout.hidden = true;
     // Meta Pixel: include all products currently in the cart.
-    trackMetaInitiateCheckout();
-    scrollCartContentTo(checkoutFields, { behavior: "smooth", block: "start" });
+    showKailuCheckoutStep({ pushHistory: true, trackMeta: true, scroll: true });
   });
 }
 $("#closeCart").addEventListener("click", closeCart);
@@ -2492,52 +2617,170 @@ document.addEventListener("keydown", event => {
   if (event.key === "Escape" && !cartDrawer.hidden) closeCart();
 });
 
-// Android/mobile browser Back: close the active UI and return to catalog instead of exiting.
-window.addEventListener("popstate", () => {
-  // A close button already hid this panel and called history.back() to remove
-  // its synthetic entry. Consume that event; do not close the panel underneath.
-  if (catalogDetailsHistoryClosePending) {
-    catalogDetailsHistoryClosePending = false;
-    if (catalogDetailsPendingRestoreScroll) restoreCatalogDetailsScrollPosition();
-    catalogDetailsPendingRestoreScroll = false;
-    const afterClose = catalogDetailsAfterHistoryClose;
-    catalogDetailsAfterHistoryClose = null;
-    if (afterClose) afterClose();
-    return;
+// Exit confirmation is shown only when the user has already returned to Home.
+const exitConfirmationModal = $("#exitConfirmationModal");
+const stayOnWebsiteButton = $("#stayOnWebsite");
+const exitWebsiteButton = $("#exitWebsite");
+let kailuSuccessReturnInProgress = false;
+
+function hideKailuExitConfirmation() {
+  if (exitConfirmationModal) exitConfirmationModal.hidden = true;
+  document.body.classList.remove("exit-confirm-open");
+}
+
+function showKailuExitConfirmation(backDelta = 2) {
+  ensureKailuHomeExitGuard(backDelta);
+  if (!exitConfirmationModal) return;
+  exitConfirmationModal.hidden = false;
+  document.body.classList.add("exit-confirm-open");
+  if (stayOnWebsiteButton) stayOnWebsiteButton.focus({ preventScroll: true });
+}
+
+function handleKailuPopstate() {
+  const previousState = kailuLastHistoryState || {};
+  const nextState = getKailuHistoryState();
+  kailuLastHistoryState = nextState;
+
+  hideKailuExitConfirmation();
+
+  if (previousState.kailuUI === "success") {
+    if (kailuSuccessReturnInProgress) {
+      kailuSuccessReturnInProgress = false;
+    } else {
+      const successBackDelta = Math.max(2, Number(previousState.kailuSuccessBackDelta) || 2);
+      // A physical Back first leaves the success state. Skip the remaining
+      // completed UI entries so the shopper returns to the catalog, not an
+      // already-submitted Cart or Checkout drawer.
+      history.go(-(successBackDelta - 1));
+      return;
+    }
   }
-  if (kailuManualUiHistoryClosePending) {
-    kailuManualUiHistoryClosePending = false;
+
+  // A Back traversal from the Home guard reaches the document's base entry.
+  // Re-arm the guard before showing the confirmation, so Stay keeps the page
+  // alive and Exit can continue to the entry before this document.
+  if (nextState.kailuApp === true && nextState.kailuUI === "home") {
+    if (previousState.kailuUI === "home" && previousState.kailuExitGuard === true) {
+      showKailuExitConfirmation(Number(previousState.kailuExitBackDelta) || 2);
+    } else {
+      // This is the normal Shop -> Home transition (including a direct #products
+      // link). Arm the exit guard, but do not show the dialog yet.
+      ensureKailuHomeExitGuard(2);
+    }
+    if (!cartDrawer.hidden) closeCart({ skipHistory: true, fromPopstate: true });
+    if (catalogDetailsModal && !catalogDetailsModal.hidden) closeCatalogDetails({ skipHistory: true, fromPopstate: true });
+    const photoLightbox = $("#photoLightbox");
+    if (photoLightbox && !photoLightbox.hidden) closePhotoLightbox({ fromPopstate: true });
+    const successModal = $("#orderSuccessModal");
+    if (successModal) successModal.hidden = true;
+    document.body.classList.remove("success-modal-open");
+    resetKailuCheckoutStep();
+    window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
 
-  // Close exactly one top-most visible UI for each real browser Back action.
-  // The order follows the visual stacking order: success dialog, photo viewer,
-  // product details, then cart drawer.
+  // A same-document state not owned by KAILU can occur in constrained WebViews.
+  // If it was reached directly from Home, retain the page and ask before exit.
+  if (nextState.kailuApp !== true) {
+    if (previousState.kailuApp === true && previousState.kailuUI === "home") {
+      showKailuExitConfirmation(1);
+    }
+    return;
+  }
+
+  const nextUi = nextState.kailuUI;
   const successModal = $("#orderSuccessModal");
-  if (successModal && !successModal.hidden) {
+  const photoLightbox = $("#photoLightbox");
+
+  if (nextUi !== "photo" && photoLightbox && !photoLightbox.hidden) {
+    closePhotoLightbox({ fromPopstate: true });
+  }
+  if (nextUi !== "cart" && nextUi !== "checkout" && !cartDrawer.hidden) {
+    closeCart({ skipHistory: true, fromPopstate: true });
+  }
+  if (nextUi !== "catalog-details" && catalogDetailsModal && !catalogDetailsModal.hidden) {
+    closeCatalogDetails({ skipHistory: true, fromPopstate: true });
+  }
+  if (nextUi !== "success" && successModal && !successModal.hidden) {
     successModal.hidden = true;
     document.body.classList.remove("success-modal-open");
-    closeCart({ skipHistory: true, fromPopstate: true });
-    scrollToCatalogList();
+  }
+
+  if (nextUi === "shop") {
+    resetKailuCheckoutStep();
+    const section = $("#products");
+    if (section) section.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
 
-  const photoLightbox = $("#photoLightbox");
-  if (photoLightbox && !photoLightbox.hidden) {
-    closePhotoLightbox({ fromPopstate: true });
+  if (nextUi === "catalog-details") {
+    resetKailuCheckoutStep();
+    const productId = nextState.catalogId;
+    if (productId !== undefined && (catalogDetailsModal?.hidden || !activeCatalogProduct)) {
+      openCatalogDetails(productId, { fromHistory: true });
+    }
+    if (Number.isFinite(Number(nextState.catalogScrollY))) {
+      catalogDetailsSavedScrollY = Math.max(0, Number(nextState.catalogScrollY));
+    }
     return;
   }
 
-  if (catalogDetailsModal && !catalogDetailsModal.hidden) {
-    // Back already returned to the listing history entry. Close only the popup
-    // and restore the catalog's previous scroll position; do not navigate again.
-    closeCatalogDetails({ fromPopstate: true, skipHistory: true });
+  if (nextUi === "cart") {
+    resetKailuCheckoutStep();
+    openCart({ fromHistory: true });
     return;
   }
 
-  if (!cartDrawer.hidden) {
-    closeCart({ skipHistory: true, fromPopstate: true });
-    scrollToCatalogList();
+  if (nextUi === "checkout") {
+    openCart({ fromHistory: true });
+    showKailuCheckoutStep({ pushHistory: false, trackMeta: false, scroll: false });
+    return;
+  }
+
+  if (nextUi === "photo") {
+    // The normal Back path leaves Photo and returns to its parent. This branch
+    // mainly supports browser Forward when the viewer's source is still loaded.
+    return;
+  }
+
+  if (nextUi === "success") {
+    if (successModal) successModal.hidden = false;
+    document.body.classList.add("success-modal-open");
+  }
+}
+
+window.addEventListener("popstate", handleKailuPopstate);
+
+// Internal section links are converted into explicit storefront history states.
+document.addEventListener("click", event => {
+  const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+  const shopLink = target && target.closest('a[href="#products"]');
+  if (shopLink && !event.defaultPrevented && !event.metaKey && !event.ctrlKey && !event.shiftKey && event.button === 0) {
+    event.preventDefault();
+    navigateToKailuShop();
+    return;
+  }
+  const homeLink = target && target.closest('a[href="#home"]');
+  if (homeLink && !event.defaultPrevented && !event.metaKey && !event.ctrlKey && !event.shiftKey && event.button === 0) {
+    event.preventDefault();
+    navigateToKailuHome();
+  }
+});
+
+if (stayOnWebsiteButton) {
+  stayOnWebsiteButton.addEventListener("click", hideKailuExitConfirmation);
+}
+if (exitWebsiteButton) {
+  exitWebsiteButton.addEventListener("click", () => {
+    const state = getKailuHistoryState();
+    const backDelta = Math.max(1, Number(state.kailuExitBackDelta) || 1);
+    hideKailuExitConfirmation();
+    history.go(-backDelta);
+  });
+}
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && exitConfirmationModal && !exitConfirmationModal.hidden) {
+    hideKailuExitConfirmation();
   }
 });
 
@@ -2550,20 +2793,23 @@ const requestedCatalogId = new URLSearchParams(window.location.search).get("cata
 if (requestedCatalogId) {
   const linkedProduct = products.find(product => String(product.catalogId) === requestedCatalogId || String(product.id) === requestedCatalogId);
   if (linkedProduct) {
-    const isMobileCatalogViewport = shouldTrackCatalogDetailsHistory();
-    if (isMobileCatalogViewport) {
-      // Make the original shared-link entry the clean catalog-list destination.
-      // The popup itself gets a separate history entry when it opens below.
-      const sharedBaseUrl = new URL(window.location.href);
-      sharedBaseUrl.searchParams.delete("catalog");
-      sharedBaseUrl.hash = "products";
-      const sharedBaseState = clearCatalogDetailsHistoryState(history.state);
-      history.replaceState(sharedBaseState, "", `${sharedBaseUrl.pathname}${sharedBaseUrl.search}${sharedBaseUrl.hash}`);
-    }
+    const sharedBaseUrl = new URL(window.location.href);
+    sharedBaseUrl.searchParams.delete("catalog");
+    sharedBaseUrl.hash = "products";
+    const sharedBaseState = {
+      ...clearCatalogDetailsHistoryState(history.state),
+      kailuApp: true,
+      kailuUI: "shop",
+      kailuBase: false,
+      kailuExitGuard: false,
+      kailuSection: "products"
+    };
+    history.replaceState(sharedBaseState, "", `${sharedBaseUrl.pathname}${sharedBaseUrl.search}${sharedBaseUrl.hash}`);
+    kailuLastHistoryState = history.state;
 
     window.setTimeout(() => {
-      $("#products").scrollIntoView({ behavior: isMobileCatalogViewport ? "instant" : "auto", block: "start" });
-      openCatalogDetails(linkedProduct.id, { trackHistory: true });
+      $("#products").scrollIntoView({ behavior: "auto", block: "start" });
+      openCatalogDetails(linkedProduct.id);
     }, 0);
   } else {
     showToast("This catalog link is no longer available.");
