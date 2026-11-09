@@ -3,7 +3,7 @@
 // digits only. Example India: "919876543210" (no +, spaces, or hyphens).
 
 const WHATSAPP_NUMBER = "918160621151"; // Optional WhatsApp fallback
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjR5_zf_oW4gYTP-lXSxeDHqxn3gzjnlTPciK3FV2MV_zoAMObqAcUAynclU0GCGn8/exec" 
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwxBg6VyPjMBR74CbAf6bzTXO5UeGw8Y3fTqxZp0KXbg31cblqI_voJrcGQs7K9ilJ7tQ/exec" 
 //"https://script.google.com/macros/s/AKfycbyIyoGbUmWSd3I164G45QWCnyz4FQcQiYgH5LMTnVYMg5DoH9dMh-6EljOoo4WqLmXSPw/exec";
 const CURRENCY = "INR";
 
@@ -1416,29 +1416,60 @@ async function sendWhatsAppOrder() {
       submitButton.disabled = false;
       return;
     }
-    // The same single ID is saved in the Sheet and sent to Meta as eventID.
-    trackMetaPurchase(orderId, total, orderItems);
-    clearPendingOrderId(orderId);
-    submitButton.textContent = "Order Request Sent";
-
-    // Return the customer to the catalog and close the cart only after save confirmation.
-    cart = {};
-    Object.keys(cartUnitSizes).forEach(id => delete cartUnitSizes[id]);
-    renderCart();
-    closeCart({ skipHistory: true });
-    ["customerName", "customerEmail", "mobileNumber", "houseBuilding", "landmark", "roadArea", "pincode", "city", "state"].forEach(id => {
-      const field = $("#" + id);
-      if (field) field.value = "";
-    });
-    $("#products").scrollIntoView({ behavior: "smooth", block: "start" });
-    if (!showKailuOrderSuccess(orderId)) {
+    // The Apps Script has confirmed this exact Order ID. Show the success dialog
+    // immediately, before analytics or optional cart/navigation work can fail.
+    const successShown = showKailuOrderSuccess(savedOrderId);
+    if (!successShown) {
       const successModal = $("#orderSuccessModal");
       if (!successModal) {
         showToast("Your order request has been submitted successfully. Our team will contact you soon.");
-      } else if (hasShownKailuOrderSuccess(orderId)) {
+      } else if (hasShownKailuOrderSuccess(savedOrderId)) {
         // A previously confirmed Order ID must never display the same dialog twice.
         showToast("This order has already been submitted successfully.");
       }
+    }
+
+    // Analytics is best-effort only: a Meta Pixel exception must never hide
+    // the already-earned order confirmation or make a saved order look failed.
+    try {
+      trackMetaPurchase(savedOrderId, total, orderItems);
+    } catch (trackingError) {
+      console.warn("KAILU: Order was saved, but Meta Purchase tracking failed.", trackingError);
+    }
+
+    clearPendingOrderId(orderId);
+    submitButton.textContent = "Order Request Sent";
+
+    // The following are post-confirmation UI cleanups. Keep each independent
+    // so a cart or scrolling issue cannot interrupt the success dialog.
+    try {
+      cart = {};
+      Object.keys(cartUnitSizes).forEach(id => delete cartUnitSizes[id]);
+      renderCart();
+    } catch (cartRenderError) {
+      console.warn("KAILU: Order was saved, but the cart could not be refreshed.", cartRenderError);
+    }
+
+    try {
+      closeCart({ skipHistory: true });
+    } catch (cartCloseError) {
+      console.warn("KAILU: Order was saved, but the cart could not be closed automatically.", cartCloseError);
+    }
+
+    try {
+      ["customerName", "customerEmail", "mobileNumber", "houseBuilding", "landmark", "roadArea", "pincode", "city", "state"].forEach(id => {
+        const field = $("#" + id);
+        if (field) field.value = "";
+      });
+    } catch (fieldResetError) {
+      console.warn("KAILU: Order was saved, but checkout fields could not be reset.", fieldResetError);
+    }
+
+    try {
+      const productsSection = $("#products");
+      if (productsSection) productsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (scrollError) {
+      console.warn("KAILU: Order was saved, but catalog scrolling failed.", scrollError);
     }
   } catch (error) {
     showToast("Could not send order. Check internet and try again.");
@@ -1492,18 +1523,29 @@ function showKailuOrderSuccess(orderId) {
     return false;
   }
 
-  const successBackDelta = getKailuHistoryState().catalogId !== undefined ? 3 : 2;
-  replaceKailuUiHistory("success", {
-    kailuSuccessBackDelta: successBackDelta,
-    kailuSuccessOrderId: confirmedOrderId
-  });
+  // Make the success state visible first. Navigation history and focus are
+  // enhancements only and must not be able to prevent the confirmation.
   successModal.dataset.orderId = confirmedOrderId;
   successModal.hidden = false;
   document.body.classList.add("success-modal-open");
   markKailuOrderSuccessShown(confirmedOrderId);
 
-  const continueButton = $("#continueShoppingSuccess");
-  if (continueButton) continueButton.focus({ preventScroll: true });
+  try {
+    const successBackDelta = getKailuHistoryState().catalogId !== undefined ? 3 : 2;
+    replaceKailuUiHistory("success", {
+      kailuSuccessBackDelta: successBackDelta,
+      kailuSuccessOrderId: confirmedOrderId
+    });
+  } catch (historyError) {
+    console.warn("KAILU: Success dialog is visible, but its navigation history could not be updated.", historyError);
+  }
+
+  try {
+    const continueButton = $("#continueShoppingSuccess");
+    if (continueButton) continueButton.focus({ preventScroll: true });
+  } catch (focusError) {
+    console.warn("KAILU: Success dialog is visible, but focus could not be moved to its button.", focusError);
+  }
   return true;
 }
 

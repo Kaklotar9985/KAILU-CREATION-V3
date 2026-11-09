@@ -69,28 +69,38 @@ function getOrderVerificationResult_(orderId) {
     code: "ORDER_PENDING",
     message: "Order save is not confirmed yet."
   };
+
+  // Check each confirmation source independently. A CacheService error must
+  // not prevent the persistent ledger or the actual Orders tab from verifying
+  // a row that has already been appended successfully.
   try {
     const cachedResult = CacheService.getScriptCache().get(orderCacheKey_(orderId));
     if (cachedResult) {
       try { response = JSON.parse(cachedResult); }
       catch (_) { response = { ok: true, orderId: cachedResult }; }
+      if (response && response.ok === true && response.orderId) return response;
     }
-
-    // CacheService can evict entries. The persistent ledger makes confirmation
-    // and duplicate protection survive cache expiry and page reloads.
-    if (!response || response.ok !== true) {
-      const ledgerResult = findOrderLedger_(orderId);
-      if (ledgerResult && ledgerResult.ok === true) response = ledgerResult;
-    }
-  } catch (verifyError) {
-    console.error("Order verification failed:", verifyError);
-    response = {
-      ok: false,
-      pending: true,
-      code: "VERIFY_SERVER_ERROR",
-      message: "Order verification temporarily failed on the Apps Script server. The order may already be saved; do not submit it again yet."
-    };
+  } catch (cacheVerifyError) {
+    console.error("Order verification cache lookup failed:", cacheVerifyError);
   }
+
+  try {
+    const ledgerResult = findOrderLedger_(orderId);
+    if (ledgerResult && ledgerResult.ok === true && ledgerResult.orderId) return ledgerResult;
+  } catch (ledgerVerifyError) {
+    console.error("Order verification ledger lookup failed:", ledgerVerifyError);
+  }
+
+  // Last-resort, read-only confirmation from the primary Orders tab. This is
+  // needed only when cache and ledger confirmation are unavailable; it does
+  // not append, edit, or otherwise change any spreadsheet data.
+  try {
+    const sheetResult = findSavedOrderRow_(orderId);
+    if (sheetResult && sheetResult.ok === true && sheetResult.orderId) return sheetResult;
+  } catch (sheetVerifyError) {
+    console.error("Order verification Orders-tab lookup failed:", sheetVerifyError);
+  }
+
   return response;
 }
 
@@ -374,6 +384,23 @@ function findOrderLedger_(orderId) {
   if (!match) return null;
   const savedOrderId = String(ledger.getRange(match.getRow(), 2).getDisplayValue() || "").trim();
   return savedOrderId ? { ok: true, orderId: savedOrderId, duplicate: true } : null;
+}
+
+function findSavedOrderRow_(orderId) {
+  const id = String(orderId || "").trim();
+  if (!id) return null;
+
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  const orderIdColumn = HEADERS.indexOf("Order ID") + 1;
+  if (!sheet || orderIdColumn < 1 || sheet.getLastRow() < 2) return null;
+
+  const match = sheet.getRange(2, orderIdColumn, sheet.getLastRow() - 1, 1)
+    .createTextFinder(id).matchEntireCell(true).findNext();
+  if (!match) return null;
+
+  const savedOrderId = String(sheet.getRange(match.getRow(), orderIdColumn).getDisplayValue() || "").trim();
+  return savedOrderId === id ? { ok: true, orderId: savedOrderId, duplicate: true } : null;
 }
 
 function recordOrderLedger_(ss, orderId, savedOrderId, savedAt) {
